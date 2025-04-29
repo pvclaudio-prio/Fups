@@ -9,7 +9,7 @@ import os
 
 st.set_page_config(layout = 'wide')
 
-caminho_csv = r"C:\Users\cvieira\Desktop\Claudio\Area de Trabalho\Dashboards\Automacao\Fup\followups.csv"
+caminho_csv = "C:\Users\cvieira\Desktop\Claudio\Area de Trabalho\Dashboards\Automacao\Fup\followups.csv"
 admin_users = ["cvieira", "amendonca", "mathayde", "bella"]
 
 def enviar_email_gmail(destinatario, assunto, corpo_html):
