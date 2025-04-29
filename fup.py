@@ -65,7 +65,8 @@ menu = st.sidebar.radio("Navegar para:", [
     "Dashboard",
     "Meus Follow-ups",
     "Cadastrar Follow-up",
-    "Enviar Evidências"
+    "Enviar Evidências",
+    "Visualizar Evidências"
 ])
 
 # --- Conteúdo das páginas ---
@@ -435,3 +436,38 @@ elif menu == "Enviar Evidências":
 
     except FileNotFoundError:
         st.warning("Arquivo followups.csv não encontrado.")
+
+elif menu == "Visualizar Evidências":
+    st.title("📂 Visualização de Evidências")
+
+    pasta_base = Path(r"C:\Users\cvieira\Desktop\Claudio\Area de Trabalho\Dashboards\Automacao\Fup\evidencias")
+
+    if not pasta_base.exists():
+        st.warning("Nenhuma evidência enviada ainda.")
+        st.stop()
+
+    # Lista pastas como "indice_1", "indice_2", etc.
+    pastas = sorted([p for p in pasta_base.iterdir() if p.is_dir()])
+    if not pastas:
+        st.info("Nenhuma evidência encontrada.")
+        st.stop()
+
+    indice_selecionado = st.selectbox("Selecione o índice do follow-up:", [p.name.split("_")[1] for p in pastas])
+    pasta = pasta_base / f"indice_{indice_selecionado}"
+
+    st.subheader(f"Evidências para Follow-up #{indice_selecionado}")
+
+    arquivos = list(pasta.glob("*"))
+    if not arquivos:
+        st.info("Nenhum arquivo enviado para esse follow-up.")
+    else:
+        for arq in arquivos:
+            if arq.name.lower() == "observacao.txt":
+                with open(arq, "r", encoding="utf-8") as f:
+                    st.markdown("**📝 Observação:**")
+                    st.info(f.read())
+            else:
+                with open(arq, "rb") as f:
+                    btn_label = f"📎 Baixar: {arq.name}"
+                    st.download_button(label=btn_label, data=f, file_name=arq.name)
+
