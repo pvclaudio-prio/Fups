@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import date
+from datetime
 import yagmail
 from io import BytesIO
 from pathlib import Path
