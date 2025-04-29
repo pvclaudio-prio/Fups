@@ -5,8 +5,12 @@ import yagmail
 from io import BytesIO
 from pathlib import Path
 import plotly.express as px
+import os
 
 st.set_page_config(layout = 'wide')
+
+caminho_csv = "C:\Users\cvieira\Desktop\Claudio\Area de Trabalho\Dashboards\Automacao\Fup\followups.csv"
+admin_users = ["cvieira", "amendonca", "mathayde", "bella"]
 
 def enviar_email_gmail(destinatario, assunto, corpo_html):
     try:
@@ -70,12 +74,12 @@ if menu == "Dashboard":
     st.title("📊 Painel de KPIs")
     
     try:
-        df = pd.read_csv("followups.csv")
+        df = pd.read_csv(caminho_csv)
         usuario_logado = st.session_state.username
         nome_usuario = users[usuario_logado]["name"]
     
         # Filtra os dados: admins veem tudo
-        if usuario_logado not in ["cvieira", "amendonca", "mathayde", "bella"]:
+        if usuario_logado not in admin_users:
             df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
     
         if df.empty:
@@ -143,14 +147,11 @@ elif menu == "Meus Follow-ups":
     st.info("Esta seção exibirá os follow-ups atribuídos a você.")
     
     try:
-        df = pd.read_csv("followups.csv")
+        df = pd.read_csv(caminho_csv)
     
         # Pega o username logado
         usuario_logado = st.session_state.username
         nome_usuario = users[usuario_logado]["name"]
-    
-        # Lista de usuários com acesso completo
-        admin_users = ["cvieira", "amendonca", "mathayde", "bella"]
     
         # Se não for admin, filtra pelo usuário
         if usuario_logado not in admin_users:
@@ -227,18 +228,18 @@ elif menu == "Meus Follow-ups":
             # Botão para atualizar valor
             if novo_valor.strip() != str(valor_atual).strip():
                 if st.button("💾 Atualizar campo"):
-                    df_original = pd.read_csv("followups.csv")
+                    df_original = pd.read_csv(caminho_csv)
                     df_original.at[indice_selecionado, coluna_escolhida] = novo_valor.strip()
-                    df_original.to_csv("followups.csv", index=False)
+                    df_original.to_csv(caminho_csv, index=False)
                     st.success(f"'{coluna_escolhida}' atualizado com sucesso.")
                     st.rerun()
             
             # Exclusão (apenas admin)
             if usuario_logado in admin_users:
                 if st.button("🗑️ Excluir este follow-up"):
-                    df_original = pd.read_csv("followups.csv")
+                    df_original = pd.read_csv(caminho_csv)
                     df_original = df_original.drop(index=indice_selecionado)
-                    df_original.to_csv("followups.csv", index=False)
+                    df_original.to_csv(caminho_csv, index=False)
                     st.success("Follow-up excluído com sucesso.")
                     st.rerun()
     
@@ -299,15 +300,14 @@ elif menu == "Cadastrar Follow-up":
         }
 
         try:
-            df = pd.read_csv("followups.csv")
+            df = pd.read_csv(caminho_csv)
         except FileNotFoundError:
             df = pd.DataFrame()
 
         df = pd.concat([df, pd.DataFrame([novo])], ignore_index=True)
-        df.to_csv("followups.csv", index=False)
+        df.to_csv(caminho_csv, index=False)
 
         st.success("✅ Follow-up salvo com sucesso!")
-
 
         # Envia e-mail
         if email:
@@ -331,12 +331,12 @@ elif menu == "Enviar Evidências":
     st.info("Aqui você poderá enviar comprovantes e observações para follow-ups.")
     
     try:
-        df = pd.read_csv("followups.csv")
+        df = pd.read_csv(caminho_csv)
 
         usuario_logado = st.session_state.username
         nome_usuario = users[usuario_logado]["name"]
 
-        if usuario_logado not in ["cvieira", "amendonca", "mathayde", "bella"]:
+        if usuario_logado not in admin_users:
             df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
 
         if df.empty:
@@ -366,10 +366,6 @@ elif menu == "Enviar Evidências":
                 st.warning("Você precisa anexar pelo menos um arquivo.")
                 st.stop()
 
-            from pathlib import Path
-            from datetime import datetime
-            import os
-
             pasta_destino = Path(f"evidencias/indice_{idx}")
             pasta_destino.mkdir(parents=True, exist_ok=True)
 
@@ -385,7 +381,7 @@ elif menu == "Enviar Evidências":
                     f.write(observacao.strip())
 
             # Registro em log
-            log_path = Path("log_evidencias.csv")
+            log_path = Path(r"C:\Users\cvieira\Desktop\Claudio\Area de Trabalho\Dashboards\Automacao\Fup\log_evidencias.csv")
             log_data = {
                 "indice": idx,
                 "titulo": linha["Titulo"],
