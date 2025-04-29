@@ -1,0 +1,12 @@
+credentials:
+  usernames:
+    cvieira:
+      name: Claudio Vieira
+      password: '$2b$12$kyrLQg/VpBJCEWmsk3BFGeKQ5aNlQsTK27G3Th4AaXv6r2xyPy8W2'
+      email: cvieira@prio3.com.br
+
+
+cookie:
+  name: followup_app
+  key: some_signature_key
+  expiry_days: 30
