@@ -353,7 +353,7 @@ elif menu == "Enviar Evidências":
     st.info("Aqui você poderá enviar comprovantes e observações para follow-ups.")
 
     try:
-        df = pd.read_csv(caminho_csv)
+        df = pd.read_csv("followups.csv")
 
         usuario_logado = st.session_state.username
         nome_usuario = users[usuario_logado]["name"]
@@ -375,11 +375,7 @@ elif menu == "Enviar Evidências":
         📝 **Plano de Ação:** {linha['Plano_de_Acao']}
         """)
 
-        arquivos = st.file_uploader(
-            "Anexe arquivos de evidência", 
-            type=["pdf", "png", "jpg", "jpeg", "zip"], 
-            accept_multiple_files=True
-        )
+        arquivos = st.file_uploader("Anexe arquivos de evidência", type=["pdf", "png", "jpg", "jpeg", "zip"], accept_multiple_files=True)
         observacao = st.text_area("Observações (opcional)")
 
         submitted = st.button("📨 Enviar Evidência")
@@ -388,38 +384,27 @@ elif menu == "Enviar Evidências":
                 st.warning("Você precisa anexar pelo menos um arquivo.")
                 st.stop()
 
-            try:
-                indice_str = str(idx)
-                pasta_destino = Path(f"evidencias/indice_{indice_str}")
-                pasta_destino.mkdir(parents=True, exist_ok=True)
-                st.info(f"Pasta criada ou existente: {pasta_destino}")
-            except Exception as e:
-                st.error(f"Erro ao criar pasta de evidências: {e}")
-                st.stop()
+            from datetime import datetime
+            from pathlib import Path
+            import yagmail
+
+            indice_str = str(idx)
+            pasta_destino = Path(f"evidencias/indice_{indice_str}")
+            pasta_destino.mkdir(parents=True, exist_ok=True)
 
             nomes_arquivos = []
             for arquivo in arquivos:
-                try:
-                    caminho = pasta_destino / arquivo.name
-                    with open(caminho, "wb") as f:
-                        f.write(arquivo.getbuffer())
-                    nomes_arquivos.append(arquivo.name)
-                except Exception as e:
-                    st.error(f"Erro ao salvar arquivo '{arquivo.name}': {e}")
+                caminho = pasta_destino / arquivo.name
+                with open(caminho, "wb") as f:
+                    f.write(arquivo.getbuffer())
+                nomes_arquivos.append(arquivo.name)
 
-            # Observação opcional
             if observacao.strip():
-                try:
-                    with open(pasta_destino / "observacao.txt", "w", encoding="utf-8") as f:
-                        f.write(observacao.strip())
-                except Exception as e:
-                    st.error(f"Erro ao salvar observação: {e}")
+                with open(pasta_destino / "observacao.txt", "w", encoding="utf-8") as f:
+                    f.write(observacao.strip())
 
-            # Registro em log
+            # Log
             try:
-                log_path = Path("log_evidencias.csv")
-                from datetime import datetime
-
                 log_data = {
                     "indice": idx,
                     "titulo": linha["Titulo"],
@@ -427,38 +412,47 @@ elif menu == "Enviar Evidências":
                     "arquivos": "; ".join(nomes_arquivos),
                     "observacao": observacao,
                     "data_envio": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "enviado_por": nome_usuario,
+                    "enviado_por": nome_usuario
                 }
                 log_df = pd.DataFrame([log_data])
+                log_path = Path("log_evidencias.csv")
                 if log_path.exists():
-                    log_df.to_csv(log_path, mode="a", header=False, index=False)
+                    log_df.to_csv(log_path, mode='a', header=False, index=False)
                 else:
                     log_df.to_csv(log_path, index=False)
             except Exception as e:
-                st.error(f"Erro ao registrar evidência no log: {e}")
+                st.error(f"Erro ao registrar log: {e}")
+
+            # Envia backup por e-mail com anexos
+            try:
+                corpo = f"""
+                <p>📩 Backup automático de evidência enviada para o follow-up:</p>
+                <ul>
+                    <li><b>Índice:</b> {idx}</li>
+                    <li><b>Título:</b> {linha['Titulo']}</li>
+                    <li><b>Responsável:</b> {linha['Responsavel']}</li>
+                    <li><b>Data:</b> {datetime.now().strftime('%d/%m/%Y %H:%M')}</li>
+                </ul>
+                <p>Arquivos anexos: {", ".join(nomes_arquivos)}</p>
+                """
+
+                attachments = [str(pasta_destino / nome) for nome in nomes_arquivos]
+                obs_path = pasta_destino / "observacao.txt"
+                if obs_path.exists():
+                    attachments.append(str(obs_path))
+
+                yag = yagmail.SMTP("pvclaudio95@gmail.com", "cner eaea afpi fuyb")
+                yag.send(
+                    to="cvieira@prio3.com.br",
+                    subject=f"[Backup Evidência] Follow-up #{idx} - {linha['Titulo']}",
+                    contents=corpo,
+                    attachments=attachments
+                )
+                st.success("📧 Backup enviado com os arquivos anexados.")
+            except Exception as e:
+                st.error(f"Erro ao enviar e-mail com backup: {e}")
 
             st.success("✅ Evidência enviada com sucesso!")
-
-            # ✅ ENVIA E-MAIL usando função padronizada
-            corpo = f"""
-            <p>🕵️ Evidência enviada para o follow-up:</p>
-            <ul>
-                <li><b>Índice:</b> {idx}</li>
-                <li><b>Título:</b> {linha['Titulo']}</li>
-                <li><b>Responsável:</b> {linha['Responsavel']}</li>
-                <li><b>Arquivos:</b> {"; ".join(nomes_arquivos)}</li>
-                <li><b>Data:</b> {datetime.now().strftime("%d/%m/%Y %H:%M")}</li>
-            </ul>
-            <p>Evidências salvas na pasta: <b>{pasta_destino}</b></p>
-            """
-
-            sucesso_envio = enviar_email(
-                destinatario="cvieira@prio3.com.br",
-                assunto=f"[Evidência] Follow-up #{idx} - {linha['Titulo']}",
-                corpo_html=corpo
-            )
-            if sucesso_envio:
-                st.success("📧 Notificação enviada ao time de auditoria!")
 
     except FileNotFoundError:
         st.warning("Arquivo followups.csv não encontrado.")
@@ -472,7 +466,6 @@ elif menu == "Visualizar Evidências":
         st.warning("Nenhuma evidência enviada ainda.")
         st.stop()
 
-    # Lista pastas como "indice_1", "indice_2", etc.
     pastas = sorted([p for p in pasta_base.iterdir() if p.is_dir()])
     if not pastas:
         st.info("Nenhuma evidência encontrada.")
@@ -496,4 +489,12 @@ elif menu == "Visualizar Evidências":
                 with open(arq, "rb") as f:
                     btn_label = f"📎 Baixar: {arq.name}"
                     st.download_button(label=btn_label, data=f, file_name=arq.name)
+
+    if st.button(f"🗑️ Excluir todas as evidências de #{indice_selecionado}"):
+        try:
+            import shutil
+            shutil.rmtree(pasta)
+            st.success(f"Evidências de índice #{indice_selecionado} foram excluídas.")
+        except Exception as e:
+            st.error(f"Erro ao excluir a pasta de evidências: {e}")
 
