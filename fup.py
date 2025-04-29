@@ -339,7 +339,7 @@ elif menu == "Cadastrar Follow-up":
 elif menu == "Enviar Evidências":
     st.title("📌 Enviar Evidências")
     st.info("Aqui você poderá enviar comprovantes e observações para follow-ups.")
-    
+
     try:
         df = pd.read_csv(caminho_csv)
 
@@ -375,7 +375,7 @@ elif menu == "Enviar Evidências":
             if not arquivos:
                 st.warning("Você precisa anexar pelo menos um arquivo.")
                 st.stop()
-        
+
             try:
                 indice_str = str(idx)
                 pasta_destino = Path(
@@ -386,7 +386,7 @@ elif menu == "Enviar Evidências":
             except Exception as e:
                 st.error(f"Erro ao criar pasta de evidências: {e}")
                 st.stop()
-        
+
             nomes_arquivos = []
             for arquivo in arquivos:
                 try:
@@ -396,7 +396,7 @@ elif menu == "Enviar Evidências":
                     nomes_arquivos.append(arquivo.name)
                 except Exception as e:
                     st.error(f"Erro ao salvar arquivo '{arquivo.name}': {e}")
-        
+
             # Observação opcional
             if observacao.strip():
                 try:
@@ -404,14 +404,14 @@ elif menu == "Enviar Evidências":
                         f.write(observacao.strip())
                 except Exception as e:
                     st.error(f"Erro ao salvar observação: {e}")
-        
+
             # Registro em log
             try:
                 log_path = Path(
                     r"C:\Users\cvieira\Desktop\Claudio\Area de Trabalho\Dashboards\Automacao\Fup\log_evidencias.csv"
                 )
                 from datetime import datetime
-        
+
                 log_data = {
                     "indice": idx,
                     "titulo": linha["Titulo"],
@@ -428,54 +428,29 @@ elif menu == "Enviar Evidências":
                     log_df.to_csv(log_path, index=False)
             except Exception as e:
                 st.error(f"Erro ao registrar evidência no log: {e}")
-        
+
             st.success("✅ Evidência enviada com sucesso!")
 
-    # Envia e-mail à auditoria
-    corpo = f"""
-    <p>🕵️ Evidência enviada para o follow-up:</p>
-    <ul>
-        <li><b>Índice:</b> {idx}</li>
-        <li><b>Título:</b> {linha['Titulo']}</li>
-        <li><b>Responsável:</b> {linha['Responsavel']}</li>
-        <li><b>Arquivos:</b> {"; ".join(nomes_arquivos)}</li>
-        <li><b>Data:</b> {datetime.now().strftime("%d/%m/%Y %H:%M")}</li>
-    </ul>
-    <p>Evidências salvas na pasta: <b>{pasta_destino}</b></p>
-    """
+            # ✅ ENVIA E-MAIL usando função padronizada
+            corpo = f"""
+            <p>🕵️ Evidência enviada para o follow-up:</p>
+            <ul>
+                <li><b>Índice:</b> {idx}</li>
+                <li><b>Título:</b> {linha['Titulo']}</li>
+                <li><b>Responsável:</b> {linha['Responsavel']}</li>
+                <li><b>Arquivos:</b> {"; ".join(nomes_arquivos)}</li>
+                <li><b>Data:</b> {datetime.now().strftime("%d/%m/%Y %H:%M")}</li>
+            </ul>
+            <p>Evidências salvas na pasta: <b>{pasta_destino}</b></p>
+            """
 
-    sucesso_envio = enviar_email(
-        destinatario="cvieira@prio3.com.br",
-        assunto=f"[Evidência] Follow-up #{idx} - {linha['Titulo']}",
-        corpo_html=corpo
-    )
-    if sucesso_envio:
-        st.success("📧 Notificação enviada ao time de auditoria!")
-
-            # Envia e-mail à auditoria
-            try:
-                yag = yagmail.SMTP("pvclaudio95@gmail.com", "cner eaea afpi fuyb")
-
-                corpo = f"""
-                <p>🕵️ Evidência enviada para o follow-up:</p>
-                <ul>
-                    <li><b>Índice:</b> {idx}</li>
-                    <li><b>Título:</b> {linha['Titulo']}</li>
-                    <li><b>Responsável:</b> {linha['Responsavel']}</li>
-                    <li><b>Arquivos:</b> {"; ".join(nomes_arquivos)}</li>
-                    <li><b>Data:</b> {datetime.now().strftime("%d/%m/%Y %H:%M")}</li>
-                </ul>
-                <p>Evidências salvas na pasta <b>evidencias/indice_{idx}/</b>.</p>
-                """
-
-                yag.send(
-                    to="cvieira@prio3.com.br",
-                    subject=f"[Evidência] Follow-up #{idx} - {linha['Titulo']}",
-                    contents=corpo
-                )
-                st.success("Notificação enviada ao time de auditoria!")
-            except Exception as e:
-                st.error(f"Erro ao enviar e-mail: {e}")
+            sucesso_envio = enviar_email(
+                destinatario="cvieira@prio3.com.br",
+                assunto=f"[Evidência] Follow-up #{idx} - {linha['Titulo']}",
+                corpo_html=corpo
+            )
+            if sucesso_envio:
+                st.success("📧 Notificação enviada ao time de auditoria!")
 
     except FileNotFoundError:
         st.warning("Arquivo followups.csv não encontrado.")
