@@ -376,8 +376,13 @@ elif menu == "Enviar Evidências":
                 st.warning("Você precisa anexar pelo menos um arquivo.")
                 st.stop()
 
-            pasta_destino = Path(fr"C:\Users\cvieira\Desktop\Claudio\Area de Trabalho\Dashboards\Automacao\Fup\evidencias\indice_{idx}")
-            pasta_destino.mkdir(parents=True, exist_ok=True)
+            indice_str = str(idx)
+            pasta_destino = Path(frf"C:\Users\cvieira\Desktop\Claudio\Area de Trabalho\Dashboards\Automacao\Fup\evidencias\indice_{indice_str}")
+            try:
+                pasta_destino.mkdir(parents=True, exist_ok=True)
+                st.info(f"Pasta criada ou existente: {pasta_destino}")
+            except Exception as e:
+                st.error(f"Erro ao criar pasta de evidências: {e}")
 
             nomes_arquivos = []
             for arquivo in arquivos:
