@@ -322,7 +322,7 @@ elif menu == "Cadastrar Follow-up":
         <p>Acesse o aplicativo para incluir evidências e acompanhar o andamento:</p>
         <p><a href='https://fup-auditoria.streamlit.app/' target='_blank'>🔗 fup-auditoria.streamlit.app</a></p>
         <br>
-        <p>Atenciosamente,<br>Sistema de Follow-ups</p>
+        <p>Atenciosamente,<br>Auditoria Interna</p>
         """
     
         # Só tenta enviar se email não estiver vazio
