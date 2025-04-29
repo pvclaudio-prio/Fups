@@ -75,7 +75,7 @@ if menu == "Dashboard":
         nome_usuario = users[usuario_logado]["name"]
     
         # Filtra os dados: admins veem tudo
-        if usuario_logado not in ["cvieira", "amendonca", "mathayde"]:
+        if usuario_logado not in ["cvieira", "amendonca", "mathayde", "bella"]:
             df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
     
         if df.empty:
@@ -150,7 +150,7 @@ elif menu == "Meus Follow-ups":
         nome_usuario = users[usuario_logado]["name"]
     
         # Lista de usuários com acesso completo
-        admin_users = ["cvieira", "amendonca", "mathayde"]
+        admin_users = ["cvieira", "amendonca", "mathayde", "bella"]
     
         # Se não for admin, filtra pelo usuário
         if usuario_logado not in admin_users:
@@ -336,7 +336,7 @@ elif menu == "Enviar Evidências":
         usuario_logado = st.session_state.username
         nome_usuario = users[usuario_logado]["name"]
 
-        if usuario_logado not in ["cvieira", "amendonca", "mathayde"]:
+        if usuario_logado not in ["cvieira", "amendonca", "mathayde", "bella"]:
             df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
 
         if df.empty:
