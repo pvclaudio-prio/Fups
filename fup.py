@@ -283,21 +283,21 @@ elif menu == "Cadastrar Follow-up":
         submitted = st.form_submit_button("Salvar Follow-up")
 
     if submitted:
-    novo = {
-        "Titulo": titulo,
-        "Ambiente": ambiente,
-        "Ano": ano,
-        "Auditoria": auditoria,
-        "Risco": risco,
-        "Plano_de_Acao": plano,
-        "Responsavel": responsavel,
-        "E-mail": email,
-        "Prazo": prazo.strftime("%Y-%m-%d"),
-        "Data_Conclusao": data_conclusao.strftime("%Y-%m-%d"),
-        "Status": status,
-        "Avaliação FUP": avaliacao,
-        "Observação": observacao
-    }
+        novo = {
+            "Titulo": titulo,
+            "Ambiente": ambiente,
+            "Ano": ano,
+            "Auditoria": auditoria,
+            "Risco": risco,
+            "Plano_de_Acao": plano,
+            "Responsavel": responsavel,
+            "E-mail": email,
+            "Prazo": prazo.strftime("%Y-%m-%d"),
+            "Data_Conclusao": data_conclusao.strftime("%Y-%m-%d"),
+            "Status": status,
+            "Avaliação FUP": avaliacao,
+            "Observação": observacao
+        }
 
     try:
         df = pd.read_csv(caminho_csv)
