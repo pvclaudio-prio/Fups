@@ -4,6 +4,7 @@ from datetime import date
 import yagmail
 from io import BytesIO
 from pathlib import Path
+import plotly.express as px
 
 st.set_page_config(layout = 'wide')
 
@@ -20,7 +21,10 @@ def enviar_email_gmail(destinatario, assunto, corpo_html):
 # --- Usuários e autenticação simples ---
 users = {
     "cvieira": {"name": "Claudio Vieira", "password": "1234"},
-    "auditoria": {"name": "Time Auditoria", "password": "auditoria"}
+    "auditoria": {"name": "Time Auditoria", "password": "auditoria"},
+    "amendonca": {"name": "Alex Mendonça", "password": "1234"},
+    "mathayde": {"name": "Maria Luiza", "password": "1234"},
+    "bella": {"name": "Isabella Miranda", "password": "claudio meu amor"}
 }
 
 if "logged_in" not in st.session_state:
@@ -61,9 +65,78 @@ menu = st.sidebar.radio("Navegar para:", [
 ])
 
 # --- Conteúdo das páginas ---
+
 if menu == "Dashboard":
     st.title("📊 Painel de KPIs")
-    st.info("Aqui você pode exibir gráficos, contadores e indicadores gerais.")
+    
+    try:
+        df = pd.read_csv("followups.csv")
+        usuario_logado = st.session_state.username
+        nome_usuario = users[usuario_logado]["name"]
+    
+        # Filtra os dados: admins veem tudo
+        if usuario_logado not in ["cvieira", "amendonca", "mathayde"]:
+            df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
+    
+        if df.empty:
+            st.info("Nenhum dado disponível para exibir KPIs.")
+            st.stop()
+    
+        # Conversões
+        df["Prazo"] = pd.to_datetime(df["Prazo"])
+        df["Ano"] = df["Ano"].astype(str)
+        df["Status"] = df["Status"].fillna("Não informado")
+    
+        # --- KPIs principais ---
+        total = len(df)
+        concluidos = (df["Status"] == "Concluído").sum()
+        pendentes = (df["Status"] == "Pendente").sum()
+        andamento = (df["Status"] == "Em Andamento").sum()
+        taxa_conclusao = round((concluidos / total) * 100, 1) if total > 0 else 0.0
+    
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Total Follow-ups", total)
+        col2.metric("Concluídos", concluidos)
+        col3.metric("Pendentes", pendentes)
+        col4.metric("Conclusão (%)", f"{taxa_conclusao}%")
+    
+        # --- Gráfico de pizza: Status ---
+        st.subheader("📌 Distribuição por Status")
+        fig_status = px.pie(
+            df,
+            names="Status",
+            title="Distribuição dos Follow-ups por Status",
+            hole=0.4
+        )
+        st.plotly_chart(fig_status, use_container_width=True)
+    
+        # --- Gráfico de barras: Auditoria ---
+        st.subheader("📁 Follow-ups por Auditoria")
+        auditoria_counts = df["Auditoria"].value_counts().reset_index()
+        auditoria_counts.columns = ["Auditoria", "Quantidade"]
+        fig_auditoria = px.bar(
+            auditoria_counts,
+            x="Auditoria",
+            y="Quantidade",
+            title="Distribuição de Follow-ups por Auditoria"
+        )
+        st.plotly_chart(fig_auditoria, use_container_width=True)
+    
+        # --- Gráfico de linha: Ano ---
+        st.subheader("📅 Follow-ups por Ano")
+        ano_counts = df["Ano"].value_counts().sort_index().reset_index()
+        ano_counts.columns = ["Ano", "Quantidade"]
+        fig_ano = px.line(
+            ano_counts,
+            x="Ano",
+            y="Quantidade",
+            markers=True,
+            title="Evolução de Follow-ups por Ano"
+        )
+        st.plotly_chart(fig_ano, use_container_width=True)
+    
+    except FileNotFoundError:
+        st.warning("Arquivo followups.csv não encontrado.")
 
 elif menu == "Meus Follow-ups":
     st.title("📁 Meus Follow-ups")
