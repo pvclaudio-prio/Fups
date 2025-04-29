@@ -313,18 +313,18 @@ elif menu == "Cadastrar Follow-up":
     if email:
         corpo = f"""
         <p>Olá <b>{responsavel}</b>,</p>
-        <p>Um novo follow-up foi cadastrado com os seguintes dados:</p>
+        <p>Um novo follow-up foi atribuído a você:</p>
         <ul>
             <li><b>Título:</b> {titulo}</li>
-            <li><b>Ambiente:</b> {ambiente}</li>
-            <li><b>Ano:</b> {ano}</li>
+            <li><b>Auditoria:</b> {auditoria}</li>
             <li><b>Prazo:</b> {prazo.strftime('%d/%m/%Y')}</li>
             <li><b>Status:</b> {status}</li>
         </ul>
-        <p>Acesse o sistema para mais detalhes.</p>
+        <p>Acesse o aplicativo para incluir evidências e acompanhar o andamento:</p>
+        <p><a href='https://fup-auditoria.streamlit.app/' target='_blank'>🔗 fup-auditoria.streamlit.app</a></p>
+        <br>
+        <p>Atenciosamente,<br>Sistema de Follow-ups</p>
         """
-        if enviar_email_gmail(email, f"[Follow-up] {titulo}", corpo):
-            st.success(f"E-mail enviado para {responsavel}!")
 
 elif menu == "Enviar Evidências":
     st.title("📌 Enviar Evidências")
