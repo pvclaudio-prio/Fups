@@ -390,9 +390,7 @@ elif menu == "Enviar Evidências":
 
             try:
                 indice_str = str(idx)
-                pasta_destino = Path(
-                    fr"C:\Users\cvieira\Desktop\Claudio\Area de Trabalho\Dashboards\Automacao\Fup\evidencias\indice_{indice_str}"
-                )
+                pasta_destino = Path(f"evidencias/indice_{indice_str}")
                 pasta_destino.mkdir(parents=True, exist_ok=True)
                 st.info(f"Pasta criada ou existente: {pasta_destino}")
             except Exception as e:
@@ -419,9 +417,7 @@ elif menu == "Enviar Evidências":
 
             # Registro em log
             try:
-                log_path = Path(
-                    r"C:\Users\cvieira\Desktop\Claudio\Area de Trabalho\Dashboards\Automacao\Fup\log_evidencias.csv"
-                )
+                log_path = Path("log_evidencias.csv")
                 from datetime import datetime
 
                 log_data = {
