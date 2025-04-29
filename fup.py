@@ -466,12 +466,42 @@ elif menu == "Visualizar Evidências":
         st.warning("Nenhuma evidência enviada ainda.")
         st.stop()
 
+    try:
+        df = pd.read_csv("followups.csv")
+    except FileNotFoundError:
+        st.warning("Arquivo followups.csv não encontrado.")
+        st.stop()
+
+    usuario_logado = st.session_state.username
+    nome_usuario = users[usuario_logado]["name"]
+
     pastas = sorted([p for p in pasta_base.iterdir() if p.is_dir()])
     if not pastas:
         st.info("Nenhuma evidência encontrada.")
         st.stop()
 
-    indice_selecionado = st.selectbox("Selecione o índice do follow-up:", [p.name.split("_")[1] for p in pastas])
+    # Lista de índices disponíveis
+    indices_disponiveis = []
+
+    if usuario_logado in admin_users:
+        # Admins veem tudo
+        indices_disponiveis = [p.name.split("_")[1] for p in pastas]
+    else:
+        # Usuários comuns: apenas seus índices
+        df_usuario = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
+        indices_usuario = df_usuario.index.astype(str).tolist()
+
+        # Só mostrar pastas que pertencem ao usuário
+        for p in pastas:
+            indice_pasta = p.name.split("_")[1]
+            if indice_pasta in indices_usuario:
+                indices_disponiveis.append(indice_pasta)
+
+    if not indices_disponiveis:
+        st.info("Nenhuma evidência disponível para você.")
+        st.stop()
+
+    indice_selecionado = st.selectbox("Selecione o índice do follow-up:", indices_disponiveis)
     pasta = pasta_base / f"indice_{indice_selecionado}"
 
     st.subheader(f"Evidências para Follow-up #{indice_selecionado}")
@@ -490,11 +520,12 @@ elif menu == "Visualizar Evidências":
                     btn_label = f"📎 Baixar: {arq.name}"
                     st.download_button(label=btn_label, data=f, file_name=arq.name)
 
-    if st.button(f"🗑️ Excluir todas as evidências de #{indice_selecionado}"):
-        try:
-            import shutil
-            shutil.rmtree(pasta)
-            st.success(f"Evidências de índice #{indice_selecionado} foram excluídas.")
-        except Exception as e:
-            st.error(f"Erro ao excluir a pasta de evidências: {e}")
-
+    # Apenas admins podem excluir
+    if usuario_logado in admin_users:
+        if st.button(f"🗑️ Excluir todas as evidências de #{indice_selecionado}"):
+            try:
+                import shutil
+                shutil.rmtree(pasta)
+                st.success(f"Evidências de índice #{indice_selecionado} foram excluídas.")
+            except Exception as e:
+                st.error(f"Erro ao excluir a pasta de evidências: {e}")
