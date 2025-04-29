@@ -366,7 +366,7 @@ elif menu == "Enviar Evidências":
                 st.warning("Você precisa anexar pelo menos um arquivo.")
                 st.stop()
 
-            pasta_destino = Path(f"evidencias/indice_{idx}")
+            pasta_destino = Path(fr"C:\Users\cvieira\Desktop\Claudio\Area de Trabalho\Dashboards\Automacao\Fup\evidencias\indice_{idx}")
             pasta_destino.mkdir(parents=True, exist_ok=True)
 
             nomes_arquivos = []
