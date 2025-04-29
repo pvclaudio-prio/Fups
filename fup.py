@@ -325,6 +325,15 @@ elif menu == "Cadastrar Follow-up":
             <br>
             <p>Atenciosamente,<br>Sistema de Follow-ups</p>
             """
+        # Chama função de envio de e-mail
+        if email:
+            sucesso_envio = enviar_email_gmail(
+                destinatario=email,
+                assunto=f"[Follow-up] Nova Atribuição: {titulo}",
+                corpo_html=corpo
+            )
+            if sucesso_envio:
+                st.success("📧 E-mail de notificação enviado com sucesso!")
 
 elif menu == "Enviar Evidências":
     st.title("📌 Enviar Evidências")
