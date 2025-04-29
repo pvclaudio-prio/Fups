@@ -375,44 +375,82 @@ elif menu == "Enviar Evidências":
             if not arquivos:
                 st.warning("Você precisa anexar pelo menos um arquivo.")
                 st.stop()
-
-            indice_str = str(idx)
-            pasta_destino = Path(frf"C:\Users\cvieira\Desktop\Claudio\Area de Trabalho\Dashboards\Automacao\Fup\evidencias\indice_{indice_str}")
+        
             try:
+                indice_str = str(idx)
+                pasta_destino = Path(
+                    fr"C:\Users\cvieira\Desktop\Claudio\Area de Trabalho\Dashboards\Automacao\Fup\evidencias\indice_{indice_str}"
+                )
                 pasta_destino.mkdir(parents=True, exist_ok=True)
                 st.info(f"Pasta criada ou existente: {pasta_destino}")
             except Exception as e:
                 st.error(f"Erro ao criar pasta de evidências: {e}")
-
+                st.stop()
+        
             nomes_arquivos = []
             for arquivo in arquivos:
-                caminho = pasta_destino / arquivo.name
-                with open(caminho, "wb") as f:
-                    f.write(arquivo.getbuffer())
-                nomes_arquivos.append(arquivo.name)
-
+                try:
+                    caminho = pasta_destino / arquivo.name
+                    with open(caminho, "wb") as f:
+                        f.write(arquivo.getbuffer())
+                    nomes_arquivos.append(arquivo.name)
+                except Exception as e:
+                    st.error(f"Erro ao salvar arquivo '{arquivo.name}': {e}")
+        
+            # Observação opcional
             if observacao.strip():
-                with open(pasta_destino / "observacao.txt", "w", encoding="utf-8") as f:
-                    f.write(observacao.strip())
-
+                try:
+                    with open(pasta_destino / "observacao.txt", "w", encoding="utf-8") as f:
+                        f.write(observacao.strip())
+                except Exception as e:
+                    st.error(f"Erro ao salvar observação: {e}")
+        
             # Registro em log
-            log_path = Path(r"C:\Users\cvieira\Desktop\Claudio\Area de Trabalho\Dashboards\Automacao\Fup\log_evidencias.csv")
-            log_data = {
-                "indice": idx,
-                "titulo": linha["Titulo"],
-                "responsavel": linha["Responsavel"],
-                "arquivos": "; ".join(nomes_arquivos),
-                "observacao": observacao,
-                "data_envio": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "enviado_por": nome_usuario
-            }
-            log_df = pd.DataFrame([log_data])
-            if log_path.exists():
-                log_df.to_csv(log_path, mode='a', header=False, index=False)
-            else:
-                log_df.to_csv(log_path, index=False)
+            try:
+                log_path = Path(
+                    r"C:\Users\cvieira\Desktop\Claudio\Area de Trabalho\Dashboards\Automacao\Fup\log_evidencias.csv"
+                )
+                from datetime import datetime
+        
+                log_data = {
+                    "indice": idx,
+                    "titulo": linha["Titulo"],
+                    "responsavel": linha["Responsavel"],
+                    "arquivos": "; ".join(nomes_arquivos),
+                    "observacao": observacao,
+                    "data_envio": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "enviado_por": nome_usuario,
+                }
+                log_df = pd.DataFrame([log_data])
+                if log_path.exists():
+                    log_df.to_csv(log_path, mode="a", header=False, index=False)
+                else:
+                    log_df.to_csv(log_path, index=False)
+            except Exception as e:
+                st.error(f"Erro ao registrar evidência no log: {e}")
+        
+            st.success("✅ Evidência enviada com sucesso!")
 
-            st.success("Evidência enviada com sucesso!")
+    # Envia e-mail à auditoria
+    corpo = f"""
+    <p>🕵️ Evidência enviada para o follow-up:</p>
+    <ul>
+        <li><b>Índice:</b> {idx}</li>
+        <li><b>Título:</b> {linha['Titulo']}</li>
+        <li><b>Responsável:</b> {linha['Responsavel']}</li>
+        <li><b>Arquivos:</b> {"; ".join(nomes_arquivos)}</li>
+        <li><b>Data:</b> {datetime.now().strftime("%d/%m/%Y %H:%M")}</li>
+    </ul>
+    <p>Evidências salvas na pasta: <b>{pasta_destino}</b></p>
+    """
+
+    sucesso_envio = enviar_email(
+        destinatario="cvieira@prio3.com.br",
+        assunto=f"[Evidência] Follow-up #{idx} - {linha['Titulo']}",
+        corpo_html=corpo
+    )
+    if sucesso_envio:
+        st.success("📧 Notificação enviada ao time de auditoria!")
 
             # Envia e-mail à auditoria
             try:
