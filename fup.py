@@ -9,6 +9,8 @@ import os
 
 st.set_page_config(layout = 'wide')
 
+st.sidebar.text(f"Diretório atual: {os.getcwd()}")
+
 caminho_csv = r"C:\Users\cvieira\Desktop\Claudio\Area de Trabalho\Dashboards\Automacao\Fup\followups.csv"
 admin_users = ["cvieira", "amendonca", "mathayde", "bella"]
 
