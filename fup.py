@@ -466,7 +466,7 @@ elif menu == "Enviar Evidências":
 elif menu == "Visualizar Evidências":
     st.title("📂 Visualização de Evidências")
 
-    pasta_base = Path(r"C:\Users\cvieira\Desktop\Claudio\Area de Trabalho\Dashboards\Automacao\Fup\evidencias")
+    pasta_base = Path("evidencias")
 
     if not pasta_base.exists():
         st.warning("Nenhuma evidência enviada ainda.")
