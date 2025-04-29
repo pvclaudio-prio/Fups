@@ -282,58 +282,58 @@ elif menu == "Cadastrar Follow-up":
         
         submitted = st.form_submit_button("Salvar Follow-up")
 
-if submitted:
-    novo = {
-        "Titulo": titulo,
-        "Ambiente": ambiente,
-        "Ano": ano,
-        "Auditoria": auditoria,
-        "Risco": risco,
-        "Plano_de_Acao": plano,
-        "Responsavel": responsavel,
-        "E-mail": email,
-        "Prazo": prazo.strftime("%Y-%m-%d"),
-        "Data_Conclusao": data_conclusao.strftime("%Y-%m-%d"),
-        "Status": status,
-        "Avaliação FUP": avaliacao,
-        "Observação": observacao
-    }
-
-    try:
-        df = pd.read_csv(caminho_csv)
-    except FileNotFoundError:
-        df = pd.DataFrame()
-
-    df = pd.concat([df, pd.DataFrame([novo])], ignore_index=True)
-    df.to_csv(caminho_csv, index=False)
-
-    st.success("✅ Follow-up salvo com sucesso!")
-
-    # Gera corpo do e-mail SEM 'if' aqui
-    corpo = f"""
-    <p>Olá <b>{responsavel}</b>,</p>
-    <p>Um novo follow-up foi atribuído a você:</p>
-    <ul>
-        <li><b>Título:</b> {titulo}</li>
-        <li><b>Auditoria:</b> {auditoria}</li>
-        <li><b>Prazo:</b> {prazo.strftime('%d/%m/%Y')}</li>
-        <li><b>Status:</b> {status}</li>
-    </ul>
-    <p>Acesse o aplicativo para incluir evidências e acompanhar o andamento:</p>
-    <p><a href='https://fup-auditoria.streamlit.app/' target='_blank'>🔗 fup-auditoria.streamlit.app</a></p>
-    <br>
-    <p>Atenciosamente,<br>Sistema de Follow-ups</p>
-    """
-
-    # Só tenta enviar se email não estiver vazio
-    if email:
-        sucesso_envio = enviar_email_gmail(
-            destinatario=email,
-            assunto=f"[Follow-up] Nova Atribuição: {titulo}",
-            corpo_html=corpo
-        )
-        if sucesso_envio:
-            st.success("📧 E-mail de notificação enviado com sucesso!")
+    if submitted:
+        novo = {
+            "Titulo": titulo,
+            "Ambiente": ambiente,
+            "Ano": ano,
+            "Auditoria": auditoria,
+            "Risco": risco,
+            "Plano_de_Acao": plano,
+            "Responsavel": responsavel,
+            "E-mail": email,
+            "Prazo": prazo.strftime("%Y-%m-%d"),
+            "Data_Conclusao": data_conclusao.strftime("%Y-%m-%d"),
+            "Status": status,
+            "Avaliação FUP": avaliacao,
+            "Observação": observacao
+        }
+    
+        try:
+            df = pd.read_csv(caminho_csv)
+        except FileNotFoundError:
+            df = pd.DataFrame()
+    
+        df = pd.concat([df, pd.DataFrame([novo])], ignore_index=True)
+        df.to_csv(caminho_csv, index=False)
+    
+        st.success("✅ Follow-up salvo com sucesso!")
+    
+        # Gera corpo do e-mail SEM 'if' aqui
+        corpo = f"""
+        <p>Olá <b>{responsavel}</b>,</p>
+        <p>Um novo follow-up foi atribuído a você:</p>
+        <ul>
+            <li><b>Título:</b> {titulo}</li>
+            <li><b>Auditoria:</b> {auditoria}</li>
+            <li><b>Prazo:</b> {prazo.strftime('%d/%m/%Y')}</li>
+            <li><b>Status:</b> {status}</li>
+        </ul>
+        <p>Acesse o aplicativo para incluir evidências e acompanhar o andamento:</p>
+        <p><a href='https://fup-auditoria.streamlit.app/' target='_blank'>🔗 fup-auditoria.streamlit.app</a></p>
+        <br>
+        <p>Atenciosamente,<br>Sistema de Follow-ups</p>
+        """
+    
+        # Só tenta enviar se email não estiver vazio
+        if email:
+            sucesso_envio = enviar_email_gmail(
+                destinatario=email,
+                assunto=f"[Follow-up] Nova Atribuição: {titulo}",
+                corpo_html=corpo
+            )
+            if sucesso_envio:
+                st.success("📧 E-mail de notificação enviado com sucesso!")
 
 elif menu == "Enviar Evidências":
     st.title("📌 Enviar Evidências")
