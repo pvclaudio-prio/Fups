@@ -21,6 +21,16 @@ def enviar_email_gmail(destinatario, assunto, corpo_html):
     except Exception as e:
         st.error(f"Erro ao enviar e-mail: {e}")
         return False
+        
+def enviar_email(destinatario, assunto, corpo_html):
+    try:
+        import yagmail
+        yag = yagmail.SMTP("pvclaudio95@gmail.com", "cner eaea afpi fuyb")
+        yag.send(to=destinatario, subject=assunto, contents=corpo_html)
+        return True
+    except Exception as e:
+        st.error(f"Erro ao enviar e-mail: {e}")
+        return False
     
 # --- Usuários e autenticação simples ---
 users = {
