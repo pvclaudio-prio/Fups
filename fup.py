@@ -31,7 +31,8 @@ def enviar_email_gmail(destinatario, assunto, corpo_html):
         return False
     
 def conectar_drive():
-    cred_dict = dict(st.secrets["credentials"])
+    cred_dict = st.secrets["credentials"]
+
     credentials = OAuth2Credentials(
         access_token=cred_dict["access_token"],
         client_id=cred_dict["client_id"],
@@ -39,8 +40,9 @@ def conectar_drive():
         refresh_token=cred_dict["refresh_token"],
         token_expiry=datetime.strptime(cred_dict["token_expiry"], "%Y-%m-%dT%H:%M:%SZ"),
         token_uri=cred_dict["token_uri"],
-        user_agent=None
+        user_agent="streamlit-app"
     )
+
     gauth = GoogleAuth()
     gauth.credentials = credentials
     return GoogleDrive(gauth)
