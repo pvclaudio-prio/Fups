@@ -42,16 +42,14 @@ def conectar_drive():
         refresh_token=cred_dict["refresh_token"],
         token_expiry=datetime.strptime(cred_dict["token_expiry"], "%Y-%m-%dT%H:%M:%SZ"),
         token_uri=cred_dict["token_uri"],
-        user_agent="streamlit-app",
-        revoke_uri="https://oauth2.googleapis.com/revoke",
-        id_token=None,
-        token_response=None
+        user_agent="streamlit-app/1.0",
+        revoke_uri=cred_dict["revoke_uri"]
     )
 
     gauth = GoogleAuth()
     gauth.credentials = credentials
-    drive = GoogleDrive(gauth)
-    return drive
+    gauth.Authorize()  # <-- esta linha estava faltando
+    return GoogleDrive(gauth)
         
 def enviar_email(destinatario, assunto, corpo_html):
     try:
