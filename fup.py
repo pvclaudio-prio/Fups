@@ -13,6 +13,7 @@ import tempfile
 import json
 from oauth2client.client import OAuth2Credentials
 import httplib2
+import traceback
 
 st.set_page_config(layout = 'wide')
 
@@ -636,4 +637,5 @@ elif menu == "Visualizar Evidências":
                     st.error(f"Erro ao excluir evidências: {e}")
 
     except Exception as e:
-        st.error(f"Erro ao acessar evidências no Google Drive: {e}")
+        st.error("Erro ao acessar evidências no Google Drive.")
+        st.code(traceback.format_exc())
