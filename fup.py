@@ -24,7 +24,6 @@ admin_users = ["cvieira", "amendonca", "mathayde", "bella"]
 
 def enviar_email_gmail(destinatario, assunto, corpo_html):
     try:
-        # ✅ Substitua pelo seu Gmail e senha de app:
         yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
         yag.send(to=destinatario, subject=assunto, contents=corpo_html)
         return True
@@ -316,7 +315,7 @@ elif menu == "Meus Follow-ups":
             """)
             
             # Exibir colunas editáveis
-            colunas_editaveis = [col for col in df.columns if col not in ["Prazo", "Data_Conclusao"]]
+            colunas_editaveis = [col for col in df.columns]
             coluna_escolhida = st.selectbox("Selecione a coluna para alterar", colunas_editaveis)
             
             # Mostrar valor atual e campo para novo valor
