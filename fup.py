@@ -586,8 +586,23 @@ elif menu == "Visualizar Evidências":
             st.info("Nenhuma evidência disponível.")
             st.stop()
 
-        opcoes = {p['title'].split('_')[1]: {'id': p['id'], 'obj': p} for p in subpastas if p['title'].startswith('indice_')}
-        indice_escolhido = st.selectbox("Selecione o índice do follow-up:", sorted(opcoes.keys(), key=int))
+        # Cria dicionário com chaves como "1", "2", etc.
+        opcoes = {
+            p['title'].split('_')[1]: {'id': p['id'], 'obj': p}
+            for p in subpastas if p['title'].startswith('indice_') and '_' in p['title']
+        }
+
+        if not opcoes:
+            st.warning("Nenhuma subpasta válida encontrada no Google Drive.")
+            st.stop()
+
+        indices_disponiveis = sorted(opcoes.keys(), key=int)
+        indice_escolhido = st.selectbox("Selecione o índice do follow-up:", indices_disponiveis)
+
+        if indice_escolhido not in opcoes:
+            st.error(f"Índice '{indice_escolhido}' não encontrado.")
+            st.stop()
+
         pasta_selecionada_id = opcoes[indice_escolhido]['id']
         pasta_obj = opcoes[indice_escolhido]['obj']
 
