@@ -314,31 +314,41 @@ elif menu == "Meus Follow-ups":
             📌 **Status:** {linha['Status']}
             """)
             
-            # Exibir colunas editáveis
-            colunas_editaveis = [col for col in df.columns if col not in ["Prazo", "Data_Conclusao"]]
+            # Permitir edição de todas as colunas
+            colunas_editaveis = [col for col in df.columns]  # inclui todas
             coluna_escolhida = st.selectbox("Selecione a coluna para alterar", colunas_editaveis)
             
-            # Mostrar valor atual e campo para novo valor
+            # Mostrar valor atual
             valor_atual = linha[coluna_escolhida]
-            novo_valor = st.text_input(f"Valor atual de '{coluna_escolhida}':", value=str(valor_atual))
             
-            # Botão para atualizar valor
-            if novo_valor.strip() != str(valor_atual).strip():
-                if st.button("💾 Atualizar campo"):
-                    df_original = pd.read_csv(caminho_csv)
-                    df_original.at[indice_selecionado, coluna_escolhida] = novo_valor.strip()
-                    df_original.to_csv(caminho_csv, index=False)
-                    try:
-                        drive = conectar_drive()
-                        arquivo = drive.CreateFile({'title': 'followups.csv'})
-                        arquivo.SetContentFile(caminho_csv)
-                        arquivo.Upload()
-                        st.info("📤 Arquivo 'followups.csv' enviado ao Google Drive com sucesso.")
-                    except Exception as e:
-                        st.warning(f"Erro ao enviar para o Drive: {e}")
-
-                    st.success(f"'{coluna_escolhida}' atualizado com sucesso.")
-                    st.rerun()
+            if coluna_escolhida in ["Prazo", "Data_Conclusao"]:
+                # Campo de data com input formatado
+                try:
+                    data_inicial = pd.to_datetime(valor_atual).date()
+                except:
+                    data_inicial = date.today()
+            
+                novo_valor = st.date_input(f"Novo valor para '{coluna_escolhida}':", value=data_inicial)
+                novo_valor_str = novo_valor.strftime("%Y-%m-%d")
+            else:
+                novo_valor = st.text_input(f"Valor atual de '{coluna_escolhida}':", value=str(valor_atual))
+                novo_valor_str = novo_valor.strip()
+            
+            # Botão para atualizar
+            if st.button("💾 Atualizar campo"):
+                df_original = pd.read_csv(caminho_csv)
+                df_original.at[indice_selecionado, coluna_escolhida] = novo_valor_str
+                df_original.to_csv(caminho_csv, index=False)
+                try:
+                    drive = conectar_drive()
+                    arquivo = drive.CreateFile({'title': 'followups.csv'})
+                    arquivo.SetContentFile(caminho_csv)
+                    arquivo.Upload()
+                    st.info("📤 Arquivo 'followups.csv' enviado ao Google Drive com sucesso.")
+                except Exception as e:
+                    st.warning(f"Erro ao enviar para o Drive: {e}")
+                st.success(f"'{coluna_escolhida}' atualizado com sucesso.")
+                st.rerun()
             
             # Exclusão (apenas admin)
             if usuario_logado in admin_users:
