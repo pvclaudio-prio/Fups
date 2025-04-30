@@ -6,34 +6,109 @@ from io import BytesIO
 from pathlib import Path
 import plotly.express as px
 import os
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
+import zipfile
+import tempfile
+import json
+from oauth2client.client import OAuth2Credentials
 
 st.set_page_config(layout = 'wide')
 
 st.sidebar.text(f"Diretório atual: {os.getcwd()}")
 
-caminho_csv = r"C:\Users\cvieira\Desktop\Claudio\Area de Trabalho\Dashboards\Automacao\Fup\followups.csv"
+caminho_csv = "followups.csv"
 admin_users = ["cvieira", "amendonca", "mathayde", "bella"]
 
 def enviar_email_gmail(destinatario, assunto, corpo_html):
     try:
         # ✅ Substitua pelo seu Gmail e senha de app:
-        yag = yagmail.SMTP("pvclaudio95@gmail.com", "cner eaea afpi fuyb")
-        yag.send(to=destinatario, subject=assunto, contents=corpo_html)
-        return True
-    except Exception as e:
-        st.error(f"Erro ao enviar e-mail: {e}")
-        return False
-        
-def enviar_email(destinatario, assunto, corpo_html):
-    try:
-        import yagmail
-        yag = yagmail.SMTP("pvclaudio95@gmail.com", "cner eaea afpi fuyb")
+        yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
         yag.send(to=destinatario, subject=assunto, contents=corpo_html)
         return True
     except Exception as e:
         st.error(f"Erro ao enviar e-mail: {e}")
         return False
     
+def conectar_drive():
+    cred_dict = dict(st.secrets["credentials"])
+    credentials = OAuth2Credentials(
+        access_token=cred_dict["access_token"],
+        client_id=cred_dict["client_id"],
+        client_secret=cred_dict["client_secret"],
+        refresh_token=cred_dict["refresh_token"],
+        token_expiry=datetime.strptime(cred_dict["token_expiry"], "%Y-%m-%dT%H:%M:%SZ"),
+        token_uri=cred_dict["token_uri"],
+        user_agent=None
+    )
+    gauth = GoogleAuth()
+    gauth.credentials = credentials
+    return GoogleDrive(gauth)
+        
+def enviar_email(destinatario, assunto, corpo_html):
+    try:
+        import yagmail
+        yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
+        yag.send(to=destinatario, subject=assunto, contents=corpo_html)
+        return True
+    except Exception as e:
+        st.error(f"Erro ao enviar e-mail: {e}")
+        return False
+
+def upload_para_drive():
+    try:
+        drive = conectar_drive()
+        arquivo = drive.CreateFile({'title': 'followups.csv'})
+        arquivo.SetContentFile(caminho_csv)
+        arquivo.Upload()
+        st.info("📤 Arquivo 'followups.csv' enviado ao Google Drive com sucesso.")
+    except Exception as e:
+        st.warning(f"Erro ao enviar para o Drive: {e}")
+
+def upload_evidencias_para_drive(idx, arquivos, observacao):
+    try:
+        drive = conectar_drive()
+        pasta_principal = None
+
+        # Procura ou cria a pasta principal "evidencias"
+        lista = drive.ListFile({'q': "title='evidencias' and mimeType='application/vnd.google-apps.folder' and trashed=false"}).GetList()
+        if lista:
+            pasta_principal = lista[0]
+        else:
+            pasta_principal = drive.CreateFile({'title': 'evidencias', 'mimeType': 'application/vnd.google-apps.folder'})
+            pasta_principal.Upload()
+
+        # Cria subpasta indice_x
+        subpasta_nome = f"indice_{idx}"
+        subpastas = drive.ListFile({'q': f"'{pasta_principal['id']}' in parents and title='{subpasta_nome}' and mimeType='application/vnd.google-apps.folder' and trashed=false"}).GetList()
+        if subpastas:
+            subpasta = subpastas[0]
+        else:
+            subpasta = drive.CreateFile({'title': subpasta_nome, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [{'id': pasta_principal['id']}]})
+            subpasta.Upload()
+
+        # Envia arquivos
+        for arq in arquivos:
+            arquivo_drive = drive.CreateFile({'title': arq.name, 'parents': [{'id': subpasta['id']}]})
+            
+            with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+                tmp_file.write(arq.getvalue())
+                tmp_file.flush()
+                arquivo_drive.SetContentFile(tmp_file.name)
+                arquivo_drive.Upload()
+
+        # Observação
+        if observacao.strip():
+            obs_file = drive.CreateFile({'title': 'observacao.txt', 'parents': [{'id': subpasta['id']}]})
+            obs_file.SetContentString(observacao.strip())
+            obs_file.Upload()
+
+        st.success("✅ Evidências enviadas ao Google Drive com sucesso.")
+        return True
+    except Exception as e:
+        st.error(f"Erro ao enviar evidências para o Drive: {e}")
+        return False
+
 # --- Usuários e autenticação simples ---
 users = {
     "cvieira": {"name": "Claudio Vieira", "password": "1234"},
@@ -244,6 +319,15 @@ elif menu == "Meus Follow-ups":
                     df_original = pd.read_csv(caminho_csv)
                     df_original.at[indice_selecionado, coluna_escolhida] = novo_valor.strip()
                     df_original.to_csv(caminho_csv, index=False)
+                    try:
+                        drive = conectar_drive()
+                        arquivo = drive.CreateFile({'title': 'followups.csv'})
+                        arquivo.SetContentFile(caminho_csv)
+                        arquivo.Upload()
+                        st.info("📤 Arquivo 'followups.csv' enviado ao Google Drive com sucesso.")
+                    except Exception as e:
+                        st.warning(f"Erro ao enviar para o Drive: {e}")
+
                     st.success(f"'{coluna_escolhida}' atualizado com sucesso.")
                     st.rerun()
             
@@ -253,6 +337,15 @@ elif menu == "Meus Follow-ups":
                     df_original = pd.read_csv(caminho_csv)
                     df_original = df_original.drop(index=indice_selecionado)
                     df_original.to_csv(caminho_csv, index=False)
+                    try:
+                        drive = conectar_drive()
+                        arquivo = drive.CreateFile({'title': 'followups.csv'})
+                        arquivo.SetContentFile(caminho_csv)
+                        arquivo.Upload()
+                        st.info("📤 Arquivo 'followups.csv' enviado ao Google Drive com sucesso.")
+                    except Exception as e:
+                        st.warning(f"Erro ao enviar para o Drive: {e}")
+
                     st.success("Follow-up excluído com sucesso.")
                     st.rerun()
     
@@ -314,12 +407,29 @@ elif menu == "Cadastrar Follow-up":
     
         try:
             df = pd.read_csv(caminho_csv)
+            try:
+                drive = conectar_drive()
+                arquivo = drive.CreateFile({'title': 'followups.csv'})
+                arquivo.SetContentFile(caminho_csv)
+                arquivo.Upload()
+                st.info("📤 Arquivo 'followups.csv' enviado ao Google Drive com sucesso.")
+            except Exception as e:
+                st.warning(f"Erro ao enviar para o Drive: {e}")
+
         except FileNotFoundError:
             df = pd.DataFrame()
     
         df = pd.concat([df, pd.DataFrame([novo])], ignore_index=True)
         df.to_csv(caminho_csv, index=False)
-    
+        try:
+            drive = conectar_drive()
+            arquivo = drive.CreateFile({'title': 'followups.csv'})
+            arquivo.SetContentFile(caminho_csv)
+            arquivo.Upload()
+            st.info("📤 Arquivo 'followups.csv' enviado ao Google Drive com sucesso.")
+        except Exception as e:
+            st.warning(f"Erro ao enviar para o Drive: {e}")
+
         st.success("✅ Follow-up salvo com sucesso!")
     
         # Gera corpo do e-mail SEM 'if' aqui
@@ -376,8 +486,8 @@ elif menu == "Enviar Evidências":
         """)
 
         arquivos = st.file_uploader(
-            "Anexe arquivos de evidência", 
-            type=["pdf", "png", "jpg", "jpeg", "zip"], 
+            "Anexe arquivos de evidência",
+            type=["pdf", "png", "jpg", "jpeg", "zip"],
             accept_multiple_files=True
         )
         observacao = st.text_area("Observações (opcional)")
@@ -388,150 +498,133 @@ elif menu == "Enviar Evidências":
                 st.warning("Você precisa anexar pelo menos um arquivo.")
                 st.stop()
 
-            try:
-                indice_str = str(idx)
-                pasta_destino = Path(f"evidencias/indice_{indice_str}")
-                pasta_destino.mkdir(parents=True, exist_ok=True)
-                st.info(f"Pasta criada ou existente: {pasta_destino}")
-            except Exception as e:
-                st.error(f"Erro ao criar pasta de evidências: {e}")
-                st.stop()
+            # Upload direto para o Google Drive
+            sucesso_upload = upload_evidencias_para_drive(idx, arquivos, observacao)
 
-            nomes_arquivos = []
-            for arquivo in arquivos:
+            # Registro em log (local)
+            if sucesso_upload:
                 try:
-                    caminho = pasta_destino / arquivo.name
-                    with open(caminho, "wb") as f:
-                        f.write(arquivo.getbuffer())
-                    nomes_arquivos.append(arquivo.name)
+                    log_path = Path("log_evidencias.csv")
+                    log_data = {
+                        "indice": idx,
+                        "titulo": linha["Titulo"],
+                        "responsavel": linha["Responsavel"],
+                        "arquivos": "; ".join([arq.name for arq in arquivos]),
+                        "observacao": observacao,
+                        "data_envio": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "enviado_por": nome_usuario,
+                    }
+                    log_df = pd.DataFrame([log_data])
+                    if log_path.exists():
+                        log_df.to_csv(log_path, mode="a", header=False, index=False)
+                    else:
+                        log_df.to_csv(log_path, index=False)
+                    st.success("✅ Registro salvo no log local.")
                 except Exception as e:
-                    st.error(f"Erro ao salvar arquivo '{arquivo.name}': {e}")
+                    st.error(f"Erro ao salvar log local: {e}")
 
-            # Observação opcional
-            if observacao.strip():
-                try:
-                    with open(pasta_destino / "observacao.txt", "w", encoding="utf-8") as f:
-                        f.write(observacao.strip())
-                except Exception as e:
-                    st.error(f"Erro ao salvar observação: {e}")
+                # Enviar e-mail de notificação
+                corpo = f"""
+                <p>🕵️ Evidência enviada para o follow-up:</p>
+                <ul>
+                    <li><b>Índice:</b> {idx}</li>
+                    <li><b>Título:</b> {linha['Titulo']}</li>
+                    <li><b>Responsável:</b> {linha['Responsavel']}</li>
+                    <li><b>Arquivos:</b> {"; ".join([arq.name for arq in arquivos])}</li>
+                    <li><b>Data:</b> {datetime.now().strftime("%d/%m/%Y %H:%M")}</li>
+                </ul>
+                <p>Evidências armazenadas no Google Drive (pasta: <b>evidencias/indice_{idx}</b>).</p>
+                """
 
-            # Registro em log
-            try:
-                log_path = Path("log_evidencias.csv")
-                from datetime import datetime
-
-                log_data = {
-                    "indice": idx,
-                    "titulo": linha["Titulo"],
-                    "responsavel": linha["Responsavel"],
-                    "arquivos": "; ".join(nomes_arquivos),
-                    "observacao": observacao,
-                    "data_envio": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "enviado_por": nome_usuario,
-                }
-                log_df = pd.DataFrame([log_data])
-                if log_path.exists():
-                    log_df.to_csv(log_path, mode="a", header=False, index=False)
-                else:
-                    log_df.to_csv(log_path, index=False)
-            except Exception as e:
-                st.error(f"Erro ao registrar evidência no log: {e}")
-
-            st.success("✅ Evidência enviada com sucesso!")
-
-            # ✅ ENVIA E-MAIL usando função padronizada
-            corpo = f"""
-            <p>🕵️ Evidência enviada para o follow-up:</p>
-            <ul>
-                <li><b>Índice:</b> {idx}</li>
-                <li><b>Título:</b> {linha['Titulo']}</li>
-                <li><b>Responsável:</b> {linha['Responsavel']}</li>
-                <li><b>Arquivos:</b> {"; ".join(nomes_arquivos)}</li>
-                <li><b>Data:</b> {datetime.now().strftime("%d/%m/%Y %H:%M")}</li>
-            </ul>
-            <p>Evidências salvas na pasta: <b>{pasta_destino}</b></p>
-            """
-
-            sucesso_envio = enviar_email(
-                destinatario="cvieira@prio3.com.br",
-                assunto=f"[Evidência] Follow-up #{idx} - {linha['Titulo']}",
-                corpo_html=corpo
-            )
-            if sucesso_envio:
-                st.success("📧 Notificação enviada ao time de auditoria!")
+                sucesso_envio = enviar_email(
+                    destinatario="cvieira@prio3.com.br",
+                    assunto=f"[Evidência] Follow-up #{idx} - {linha['Titulo']}",
+                    corpo_html=corpo
+                )
+                if sucesso_envio:
+                    st.success("📧 Notificação enviada ao time de auditoria!")
 
     except FileNotFoundError:
         st.warning("Arquivo followups.csv não encontrado.")
 
 elif menu == "Visualizar Evidências":
-    st.title("📂 Visualização de Evidências")
+    import zipfile
+    import tempfile
 
-    pasta_base = Path("evidencias")
-
-    if not pasta_base.exists():
-        st.warning("Nenhuma evidência enviada ainda.")
-        st.stop()
+    st.title("📂 Visualização de Evidências - Google Drive")
 
     try:
-        df = pd.read_csv("followups.csv")
-    except FileNotFoundError:
-        st.warning("Arquivo followups.csv não encontrado.")
-        st.stop()
+        drive = conectar_drive()
 
-    usuario_logado = st.session_state.username
-    nome_usuario = users[usuario_logado]["name"]
+        # Pasta "evidencias"
+        pasta_principal = drive.ListFile({
+            'q': "title='evidencias' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        }).GetList()
 
-    pastas = sorted([p for p in pasta_base.iterdir() if p.is_dir()])
-    if not pastas:
-        st.info("Nenhuma evidência encontrada.")
-        st.stop()
+        if not pasta_principal:
+            st.warning("Nenhuma pasta de evidências encontrada.")
+            st.stop()
 
-    # Lista de índices disponíveis
-    indices_disponiveis = []
+        pasta_id = pasta_principal[0]['id']
 
-    if usuario_logado in admin_users:
-        # Admins veem tudo
-        indices_disponiveis = [p.name.split("_")[1] for p in pastas]
-    else:
-        # Usuários comuns: apenas seus índices
-        df_usuario = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
-        indices_usuario = df_usuario.index.astype(str).tolist()
+        # Subpastas tipo indice_1, indice_2...
+        subpastas = drive.ListFile({
+            'q': f"'{pasta_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        }).GetList()
 
-        # Só mostrar pastas que pertencem ao usuário
-        for p in pastas:
-            indice_pasta = p.name.split("_")[1]
-            if indice_pasta in indices_usuario:
-                indices_disponiveis.append(indice_pasta)
+        if not subpastas:
+            st.info("Nenhuma evidência disponível.")
+            st.stop()
 
-    if not indices_disponiveis:
-        st.info("Nenhuma evidência disponível para você.")
-        st.stop()
+        opcoes = {p['title'].split('_')[1]: {'id': p['id'], 'obj': p} for p in subpastas if p['title'].startswith('indice_')}
+        indice_escolhido = st.selectbox("Selecione o índice do follow-up:", sorted(opcoes.keys(), key=int))
+        pasta_selecionada_id = opcoes[indice_escolhido]['id']
+        pasta_obj = opcoes[indice_escolhido]['obj']
 
-    indice_selecionado = st.selectbox("Selecione o índice do follow-up:", indices_disponiveis)
-    pasta = pasta_base / f"indice_{indice_selecionado}"
+        st.subheader(f"📁 Evidências para Follow-up #{indice_escolhido}")
 
-    st.subheader(f"Evidências para Follow-up #{indice_selecionado}")
+        arquivos = drive.ListFile({
+            'q': f"'{pasta_selecionada_id}' in parents and trashed=false"
+        }).GetList()
 
-    arquivos = list(pasta.glob("*"))
-    if not arquivos:
-        st.info("Nenhum arquivo enviado para esse follow-up.")
-    else:
-        for arq in arquivos:
-            if arq.name.lower() == "observacao.txt":
-                with open(arq, "r", encoding="utf-8") as f:
+        if not arquivos:
+            st.info("Nenhum arquivo nesta pasta.")
+            st.stop()
+
+        buffer_zip = BytesIO()
+        with zipfile.ZipFile(buffer_zip, "w") as zipf:
+            for arq in arquivos:
+                nome = arq['title']
+                if nome.lower() == "observacao.txt":
+                    conteudo = arq.GetContentString()
                     st.markdown("**📝 Observação:**")
-                    st.info(f.read())
-            else:
-                with open(arq, "rb") as f:
-                    btn_label = f"📎 Baixar: {arq.name}"
-                    st.download_button(label=btn_label, data=f, file_name=arq.name)
+                    st.info(conteudo)
+                    zipf.writestr(nome, conteudo)
+                else:
+                    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+                        arq.GetContentFile(tmp_file.name)
+                        tmp_file.seek(0)
+                        zipf.write(tmp_file.name, arcname=nome)
+                        link = arq['alternateLink']
+                        st.markdown(f"📎 [{nome}]({link})", unsafe_allow_html=True)
 
-    # Apenas admins podem excluir
-    if usuario_logado in admin_users:
-        if st.button(f"🗑️ Excluir todas as evidências de #{indice_selecionado}"):
-            try:
-                import shutil
-                shutil.rmtree(pasta)
-                st.success(f"Evidências de índice #{indice_selecionado} foram excluídas.")
-            except Exception as e:
-                st.error(f"Erro ao excluir a pasta de evidências: {e}")
+        buffer_zip.seek(0)
+        st.download_button(
+            label="📦 Baixar todos como .zip",
+            data=buffer_zip,
+            file_name=f"evidencias_indice_{indice_escolhido}.zip",
+            mime="application/zip"
+        )
+
+        # Botão de exclusão (somente admin)
+        if st.session_state.username in admin_users:
+            if st.button("🗑️ Excluir todas as evidências deste índice"):
+                try:
+                    pasta_obj.Delete()
+                    st.success(f"Evidências do índice {indice_escolhido} excluídas com sucesso.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro ao excluir evidências: {e}")
+
+    except Exception as e:
+        st.error(f"Erro ao acessar evidências no Google Drive: {e}")
