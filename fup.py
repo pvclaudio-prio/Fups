@@ -32,7 +32,7 @@ def enviar_email_gmail(destinatario, assunto, corpo_html):
         return False
     
 def conectar_drive():
-    cred_dict = st.secrets["credentials"]
+    cred_dict = json.loads(st.secrets["credentials"])
 
     credentials = OAuth2Credentials(
         access_token=cred_dict["access_token"],
@@ -53,7 +53,6 @@ def conectar_drive():
     gauth.credentials = credentials
     drive = GoogleDrive(gauth)
     return drive
-
         
 def enviar_email(destinatario, assunto, corpo_html):
     try:
