@@ -31,7 +31,28 @@ def conectar_google_drive():
     gauth.LocalWebserverAuth()  # Abre o navegador para login com conta Google
     drive = GoogleDrive(gauth)
     return drive
-    
+
+def enviar_csv_para_drive(drive, caminho_csv):
+    arquivo = drive.CreateFile({"title": "followups.csv"})
+    arquivo.SetContentFile(caminho_csv)
+    arquivo.Upload()
+    st.success("📤 Arquivo followups.csv enviado com sucesso ao Google Drive.")
+
+def enviar_evidencias_para_drive(drive, indice):
+    from pathlib import Path
+
+    pasta = Path(f"evidencias/indice_{indice}")
+    if not pasta.exists():
+        st.error(f"Pasta não encontrada: {pasta}")
+        return
+
+    for arq in pasta.iterdir():
+        if arq.is_file():
+            arquivo = drive.CreateFile({"title": arq.name})
+            arquivo.SetContentFile(str(arq))
+            arquivo.Upload()
+            st.success(f"📎 {arq.name} enviado ao Drive")
+
 def enviar_email(destinatario, assunto, corpo_html):
     try:
         import yagmail
@@ -537,3 +558,7 @@ elif menu == "Visualizar Evidências":
                 st.success(f"Evidências de índice #{indice_selecionado} foram excluídas.")
             except Exception as e:
                 st.error(f"Erro ao excluir a pasta de evidências: {e}")
+
+drive = conectar_google_drive()
+enviar_csv_para_drive(drive, "followups.csv")
+enviar_evidencias_para_drive(drive, idx)
