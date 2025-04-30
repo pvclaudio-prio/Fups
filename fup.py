@@ -315,7 +315,7 @@ elif menu == "Meus Follow-ups":
             """)
             
             # Exibir colunas editáveis
-            colunas_editaveis = [col for col in df.columns]
+            colunas_editaveis = [col for col in df.columns if col not in ["Prazo"]]
             coluna_escolhida = st.selectbox("Selecione a coluna para alterar", colunas_editaveis)
             
             # Mostrar valor atual e campo para novo valor
