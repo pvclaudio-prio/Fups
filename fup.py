@@ -31,8 +31,6 @@ def enviar_email_gmail(destinatario, assunto, corpo_html):
         return False
     
 def conectar_drive():
-    from oauth2client.client import OAuth2Credentials
-
     cred_dict = st.secrets["credentials"]
 
     credentials = OAuth2Credentials(
@@ -46,10 +44,15 @@ def conectar_drive():
         revoke_uri=cred_dict["revoke_uri"]
     )
 
+    # Atualiza token se expirado
+    if credentials.access_token_expired:
+        credentials.refresh(httplib2.Http())
+
     gauth = GoogleAuth()
     gauth.credentials = credentials
-    gauth.Authorize()  # <-- esta linha estava faltando
-    return GoogleDrive(gauth)
+    drive = GoogleDrive(gauth)
+    return drive
+
         
 def enviar_email(destinatario, assunto, corpo_html):
     try:
