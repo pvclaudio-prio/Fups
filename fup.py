@@ -6,6 +6,8 @@ from io import BytesIO
 from pathlib import Path
 import plotly.express as px
 import os
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
 
 st.set_page_config(layout = 'wide')
 
@@ -24,6 +26,12 @@ def enviar_email_gmail(destinatario, assunto, corpo_html):
         st.error(f"Erro ao enviar e-mail: {e}")
         return False
         
+def conectar_google_drive():
+    gauth = GoogleAuth()
+    gauth.LocalWebserverAuth()  # Abre o navegador para login com conta Google
+    drive = GoogleDrive(gauth)
+    return drive
+    
 def enviar_email(destinatario, assunto, corpo_html):
     try:
         import yagmail
