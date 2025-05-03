@@ -567,8 +567,6 @@ elif menu == "Enviar Evidências":
         st.warning("Arquivo followups.csv não encontrado.")
 
 elif menu == "Visualizar Evidências":
-    import zipfile
-    import tempfile
 
     st.title("📂 Visualização de Evidências - Google Drive")
 
