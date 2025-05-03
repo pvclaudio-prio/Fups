@@ -256,70 +256,76 @@ if menu == "Dashboard":
 elif menu == "Meus Follow-ups":
     st.title("📁 Meus Follow-ups")
     st.info("Esta seção exibirá os follow-ups atribuídos a você.")
-    
+
     try:
-        df = pd.read_csv(caminho_csv)
-    
-        # Pega o username logado
+        # Conecta ao Google Drive
+        drive = conectar_drive()
+
+        # Procura arquivo chamado 'followups.csv'
+        arquivos = drive.ListFile({
+            'q': "title = 'followups.csv' and trashed=false"
+        }).GetList()
+
+        if not arquivos:
+            st.warning("Arquivo followups.csv não encontrado no Google Drive.")
+            st.stop()
+
+        arquivo = arquivos[0]
+        caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
+        arquivo.GetContentFile(caminho_temp)
+
+        df = pd.read_csv(caminho_temp)
+
         usuario_logado = st.session_state.username
         nome_usuario = users[usuario_logado]["name"]
-    
-        # Se não for admin, filtra pelo usuário
+
         if usuario_logado not in admin_users:
             df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
-    
-        # Conversões
+
         df["Prazo"] = pd.to_datetime(df["Prazo"])
         df["Ano"] = df["Ano"].astype(str)
-    
-        # Filtros Sidebar
+
+        # --- Filtros na sidebar ---
         st.sidebar.subheader("Filtros de Pesquisa")
-    
+
         if st.sidebar.button("🔄 Limpar Filtros"):
             st.rerun()
-    
+
         auditorias = ["Todos"] + sorted(df["Auditoria"].dropna().unique().tolist())
         auditoria_selecionada = st.sidebar.selectbox("Auditoria", auditorias)
-    
+
         status_lista = ["Todos"] + sorted(df["Status"].dropna().unique().tolist())
         status_selecionado = st.sidebar.selectbox("Status", status_lista)
-    
+
         anos = ["Todos"] + sorted(df["Ano"].dropna().unique().tolist())
         ano_selecionado = st.sidebar.selectbox("Ano", anos)
-    
+
         prazo_inicial, prazo_final = st.sidebar.date_input(
             "Intervalo de Prazo",
             [df["Prazo"].min().date(), df["Prazo"].max().date()]
         )
-    
-        # Aplicar filtros
+
         if auditoria_selecionada != "Todos":
             df = df[df["Auditoria"] == auditoria_selecionada]
-    
+
         if status_selecionado != "Todos":
             df = df[df["Status"] == status_selecionado]
-    
+
         if ano_selecionado != "Todos":
             df = df[df["Ano"] == ano_selecionado]
-    
+
         df = df[(df["Prazo"].dt.date >= prazo_inicial) & (df["Prazo"].dt.date <= prazo_final)]
-    
-        # Ordenar
         df = df.sort_values(by="Prazo")
-    
-        # Mostrar Follow-ups
+
         if not df.empty:
             st.dataframe(df, use_container_width=True)
             st.success(f"Total Follow Ups: {len(df)}")
-    
-            # Área de edição de Status
+
             st.subheader("🛠️ Atualizar / Excluir Follow-up por Índice")
 
-            # Exibe os índices disponíveis da tabela atual
             indices_disponiveis = df.index.tolist()
             indice_selecionado = st.selectbox("Selecione o índice para edição", indices_disponiveis)
-            
-            # Mostrar dados da linha selecionada
+
             linha = df.loc[indice_selecionado]
             st.markdown(f"""
             🔎 **Título:** {linha['Titulo']}  
@@ -327,77 +333,70 @@ elif menu == "Meus Follow-ups":
             👤 **Responsável:** {linha['Responsavel']}  
             📌 **Status:** {linha['Status']}
             """)
-            
-            # Permitir edição de todas as colunas
-            colunas_editaveis = [col for col in df.columns]  # inclui todas
+
+            colunas_editaveis = [col for col in df.columns]
             coluna_escolhida = st.selectbox("Selecione a coluna para alterar", colunas_editaveis)
-            
-            # Mostrar valor atual
+
             valor_atual = linha[coluna_escolhida]
-            
+
             if coluna_escolhida in ["Prazo", "Data_Conclusao"]:
-                # Campo de data com input formatado
                 try:
                     data_inicial = pd.to_datetime(valor_atual).date()
                 except:
                     data_inicial = date.today()
-            
                 novo_valor = st.date_input(f"Novo valor para '{coluna_escolhida}':", value=data_inicial)
                 novo_valor_str = novo_valor.strftime("%Y-%m-%d")
             else:
                 novo_valor = st.text_input(f"Valor atual de '{coluna_escolhida}':", value=str(valor_atual))
                 novo_valor_str = novo_valor.strip()
-            
-            # Botão para atualizar
+
             if st.button("💾 Atualizar campo"):
-                df_original = pd.read_csv(caminho_csv)
+                df_original = pd.read_csv(caminho_temp)
                 df_original.at[indice_selecionado, coluna_escolhida] = novo_valor_str
                 df_original.to_csv(caminho_csv, index=False)
+
                 try:
-                    drive = conectar_drive()
-                    arquivo = drive.CreateFile({'title': 'followups.csv'})
                     arquivo.SetContentFile(caminho_csv)
                     arquivo.Upload()
-                    st.info("📤 Arquivo 'followups.csv' enviado ao Google Drive com sucesso.")
+                    st.info("📤 Arquivo 'followups.csv' atualizado no Google Drive.")
                 except Exception as e:
                     st.warning(f"Erro ao enviar para o Drive: {e}")
+
                 st.success(f"'{coluna_escolhida}' atualizado com sucesso.")
                 st.rerun()
-            
-            # Exclusão (apenas admin)
+
             if usuario_logado in admin_users:
                 if st.button("🗑️ Excluir este follow-up"):
-                    df_original = pd.read_csv(caminho_csv)
+                    df_original = pd.read_csv(caminho_temp)
                     df_original = df_original.drop(index=indice_selecionado)
                     df_original.to_csv(caminho_csv, index=False)
+
                     try:
-                        drive = conectar_drive()
-                        arquivo = drive.CreateFile({'title': 'followups.csv'})
                         arquivo.SetContentFile(caminho_csv)
                         arquivo.Upload()
-                        st.info("📤 Arquivo 'followups.csv' enviado ao Google Drive com sucesso.")
+                        st.info("📤 Arquivo 'followups.csv' atualizado no Google Drive.")
                     except Exception as e:
                         st.warning(f"Erro ao enviar para o Drive: {e}")
 
                     st.success("Follow-up excluído com sucesso.")
                     st.rerun()
-    
-            # Exportar para Excel
+
             buffer = BytesIO()
             with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
                 df.to_excel(writer, index=False, sheet_name='FollowUps')
-    
+
             st.download_button(
                 label="📥 Exportar resultados para Excel",
                 data=buffer.getvalue(),
                 file_name="followups_filtrados.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+
         else:
             st.info("Nenhum follow-up encontrado com os filtros aplicados.")
-    
-    except FileNotFoundError:
-        st.warning("Nenhum follow-up cadastrado ainda.")
+
+    except Exception as e:
+        st.error(f"Erro ao acessar dados do Google Drive: {e}")
 
 elif menu == "Cadastrar Follow-up":
     st.title("📝 Cadastrar Follow-up")
