@@ -494,7 +494,20 @@ elif menu == "Enviar Evidências":
     st.info("Aqui você poderá enviar comprovantes e observações para follow-ups.")
 
     try:
-        df = pd.read_csv(caminho_csv)
+        # 🔄 Puxa o arquivo mais recente do Drive
+        drive = conectar_drive()
+        arquivos_drive = drive.ListFile({
+            'q': "title = 'followups.csv' and trashed=false"
+        }).GetList()
+
+        if not arquivos_drive:
+            st.warning("Arquivo followups.csv não encontrado no Google Drive.")
+            st.stop()
+
+        arquivo_drive = arquivos_drive[0]
+        caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
+        arquivo_drive.GetContentFile(caminho_temp)
+        df = pd.read_csv(caminho_temp)
 
         usuario_logado = st.session_state.username
         nome_usuario = users[usuario_logado]["name"]
@@ -575,8 +588,8 @@ elif menu == "Enviar Evidências":
                 if sucesso_envio:
                     st.success("📧 Notificação enviada ao time de auditoria!")
 
-    except FileNotFoundError:
-        st.warning("Arquivo followups.csv não encontrado.")
+    except Exception as e:
+        st.error(f"Erro ao carregar dados do Google Drive: {e}")
 
 elif menu == "Visualizar Evidências":
 
