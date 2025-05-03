@@ -169,39 +169,55 @@ menu = st.sidebar.radio("Navegar para:", [
 
 if menu == "Dashboard":
     st.title("📊 Painel de KPIs")
-    
+
     try:
-        df = pd.read_csv(caminho_csv)
+        # Conecta ao Google Drive
+        drive = conectar_drive()
+
+        # Procura arquivo chamado 'followups.csv'
+        arquivos = drive.ListFile({
+            'q': "title = 'followups.csv' and trashed=false"
+        }).GetList()
+
+        if not arquivos:
+            st.warning("Arquivo followups.csv não encontrado no Drive.")
+            st.stop()
+
+        arquivo = arquivos[0]
+        caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
+        arquivo.GetContentFile(caminho_temp)
+
+        # Carrega CSV com pandas
+        df = pd.read_csv(caminho_temp)
+
         usuario_logado = st.session_state.username
         nome_usuario = users[usuario_logado]["name"]
-    
-        # Filtra os dados: admins veem tudo
+
         if usuario_logado not in admin_users:
             df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
-    
+
         if df.empty:
             st.info("Nenhum dado disponível para exibir KPIs.")
             st.stop()
-    
-        # Conversões
+
         df["Prazo"] = pd.to_datetime(df["Prazo"])
         df["Ano"] = df["Ano"].astype(str)
         df["Status"] = df["Status"].fillna("Não informado")
-    
+
         # --- KPIs principais ---
         total = len(df)
         concluidos = (df["Status"] == "Concluído").sum()
         pendentes = (df["Status"] == "Pendente").sum()
         andamento = (df["Status"] == "Em Andamento").sum()
         taxa_conclusao = round((concluidos / total) * 100, 1) if total > 0 else 0.0
-    
+
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Total Follow-ups", total)
         col2.metric("Concluídos", concluidos)
         col3.metric("Pendentes", pendentes)
         col4.metric("Conclusão (%)", f"{taxa_conclusao}%")
-    
-        # --- Gráfico de pizza: Status ---
+
+        # --- Gráficos ---
         st.subheader("📌 Distribuição por Status")
         fig_status = px.pie(
             df,
@@ -210,8 +226,7 @@ if menu == "Dashboard":
             hole=0.4
         )
         st.plotly_chart(fig_status, use_container_width=True)
-    
-        # --- Gráfico de barras: Auditoria ---
+
         st.subheader("📁 Follow-ups por Auditoria")
         auditoria_counts = df["Auditoria"].value_counts().reset_index()
         auditoria_counts.columns = ["Auditoria", "Quantidade"]
@@ -222,8 +237,7 @@ if menu == "Dashboard":
             title="Distribuição de Follow-ups por Auditoria"
         )
         st.plotly_chart(fig_auditoria, use_container_width=True)
-    
-        # --- Gráfico de linha: Ano ---
+
         st.subheader("📅 Follow-ups por Ano")
         ano_counts = df["Ano"].value_counts().sort_index().reset_index()
         ano_counts.columns = ["Ano", "Quantidade"]
@@ -235,9 +249,9 @@ if menu == "Dashboard":
             title="Evolução de Follow-ups por Ano"
         )
         st.plotly_chart(fig_ano, use_container_width=True)
-    
-    except FileNotFoundError:
-        st.warning("Arquivo followups.csv não encontrado.")
+
+    except Exception as e:
+        st.error(f"Erro ao acessar dados do Google Drive: {e}")
 
 elif menu == "Meus Follow-ups":
     st.title("📁 Meus Follow-ups")
