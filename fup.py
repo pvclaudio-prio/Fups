@@ -56,7 +56,6 @@ def conectar_drive():
         
 def enviar_email(destinatario, assunto, corpo_html):
     try:
-        import yagmail
         yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
         yag.send(to=destinatario, subject=assunto, contents=corpo_html)
         return True
