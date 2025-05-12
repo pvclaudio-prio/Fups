@@ -21,6 +21,7 @@ from sentence_transformers import SentenceTransformer, util
 from openai import OpenAI
 import json
 import requests
+import tempfile
 
 st.set_page_config(layout = 'wide')
 
@@ -695,15 +696,28 @@ elif menu == "Visualizar Evidências":
         st.code(traceback.format_exc())
 
 elif menu == "🔍 Chatbot FUP":
-    st.title("🤖 Chatbot FUP com Busca Inteligente")
+    st.title("🤖 Chatbot FUP com Pergunta Livre")
 
-    df = carregar_followups()  # já definido anteriormente no seu app
+    # --- Função para carregar a base do followups.csv do Google Drive
+    @st.cache_data
+    def carregar_followups():
+        drive = conectar_drive()
+        arquivos = drive.ListFile({
+            'q': "title = 'followups.csv' and trashed=false"
+        }).GetList()
+        if not arquivos:
+            return pd.DataFrame()
+        caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
+        arquivos[0].GetContentFile(caminho_temp)
+        return pd.read_csv(caminho_temp)
+
+    df = carregar_followups()
 
     if df.empty:
         st.warning("Nenhum dado disponível.")
         st.stop()
 
-    prompt_chat = st.chat_input("Faça uma pergunta sobre seus follow-ups")
+    prompt_chat = st.chat_input("📨 Faça uma pergunta sobre seus follow-ups")
     resposta_final = "❌ Nenhuma resposta foi gerada."
 
     if prompt_chat:
@@ -711,7 +725,7 @@ elif menu == "🔍 Chatbot FUP":
 
         API_KEY = st.secrets["openai"]["api_key"]
 
-        # Tenta identificar palavra-chave de filtro: ambiente, ano, status
+        # --- Tenta extrair termos via regex
         match = re.search(r"(ambiente|status|auditoria)\s(.+?)(?:\s|$)", prompt_chat, re.IGNORECASE)
         ano_match = re.search(r"(\d{4})", prompt_chat)
 
@@ -725,7 +739,7 @@ elif menu == "🔍 Chatbot FUP":
         if ano_match:
             filtros["Ano"] = ano_match.group(1)
 
-        # Aplica filtros simples
+        # --- Aplica filtros simples
         if filtros:
             df_filtrado = df.copy()
             for col in df_filtrado.select_dtypes(include="object").columns:
@@ -742,19 +756,20 @@ elif menu == "🔍 Chatbot FUP":
         else:
             dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
 
-        # Construir o system prompt
+        # --- Prompt explicativo para o GPT
         system_prompt = f"""
 # Papel
 Você é um assistente de auditoria interna.
 
 # Objetivo
-Responda de forma objetiva a perguntas sobre a base de dados de follow-ups.
+Responda de forma objetiva a perguntas sobre follow-ups.
 
 # Instruções:
 - Use a base de dados abaixo para responder.
 - Resuma apenas o que for solicitado.
 - Se a informação não estiver na base, diga que não foi localizada.
 - Use linguagem clara e direta.
+- Não repita informações nem gere texto excessivo.
 
 # Base de dados:
 {dados_markdown}
@@ -776,12 +791,12 @@ Responda de forma objetiva a perguntas sobre a base de dados de follow-ups.
             "Content-Type": "application/json"
         }
 
-        # Primeira chamada para o GPT (consulta)
+        # --- Primeira chamada à API da OpenAI (resposta principal)
         response = requests.post(
             "https://api.openai.com/v1/chat/completions",
             headers=headers,
             json=payload,
-            verify=False  # SSL desativado
+            verify=False  # ⚠️ SSL desativado
         )
 
         if response.status_code == 200:
@@ -790,22 +805,27 @@ Responda de forma objetiva a perguntas sobre a base de dados de follow-ups.
         else:
             resposta_final = f"Erro na API: {response.status_code} - {response.text}"
 
-        # Revisor
+        # --- Revisor
+        revisor_prompt = f"""
+Você é um revisor de respostas técnicas para auditoria.
+
+# Objetivo
+Revisar e reescrever a resposta para que fique:
+- Clara e objetiva
+- Sem repetições
+- Padronizada com a estrutura: situação, número de follow-ups, dados relevantes
+- Sem exageros ou termos técnicos desnecessários
+
+# Base de dados:
+{dados_markdown}
+
+# Resposta original a revisar:
+"""
+
         payload_revisor = {
             "model": "gpt-4o",
             "messages": [
-                {
-                    "role": "system",
-                    "content": f"""
-Você é um revisor de respostas técnicas para auditoria interna.
-Garanta que a resposta seja direta, clara, sem repetições e com estrutura objetiva.
-
-Use esta base de referência:
-{dados_markdown}
-
-Revisar:
-"""
-                },
+                {"role": "system", "content": revisor_prompt},
                 {"role": "user", "content": resposta_final}
             ],
             "temperature": 0.2,
@@ -824,6 +844,5 @@ Revisar:
         else:
             resposta_final = f"(Erro ao revisar resposta: {response_revisor.status_code})\n\n{resposta_final}"
 
-        # Exibe a resposta final do assistente
         with st.chat_message("assistant"):
             st.write(resposta_final)
