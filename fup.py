@@ -695,7 +695,12 @@ elif menu == "Visualizar Evidências":
 elif menu == "🔍 Chatbot FUP":
     st.title("🤖 Chatbot - Consulta Inteligente de Follow-ups")
 
-    # Cria cliente OpenAI com verificação SSL desativada
+    import json
+    import httpx
+    from sentence_transformers import SentenceTransformer, util
+    from openai import OpenAI
+
+    # Cliente OpenAI com verificação SSL desativada
     client = OpenAI(
         api_key=st.secrets["openai"]["api_key"],
         http_client=httpx.Client(verify=False)
@@ -729,7 +734,7 @@ elif menu == "🔍 Chatbot FUP":
 
     consulta = st.text_area("📝 Digite sua pergunta ou descrição livre do que procura:")
 
-    # --- Busca por similaridade (texto corrido) ---
+    # --- Busca por similaridade (em texto corrido) ---
     if st.button("🔎 Buscar Follow-ups similares"):
         with st.spinner("🔍 Analisando similaridade semântica..."):
             try:
@@ -747,11 +752,19 @@ elif menu == "🔍 Chatbot FUP":
                 st.error("Erro ao calcular similaridade.")
                 st.exception(e)
 
-    # --- Agente de análise com filtro estruturado ---
+    # --- Análise estruturada com extração de filtros ---
     if st.button("🧠 Analisar com Agente de Auditoria"):
         prompt_filtro = f"""
-Você é um assistente de auditoria. Extraia filtros em formato JSON para aplicar sobre colunas como:
+Você é um assistente de auditoria. Extraia filtros em formato JSON puro para aplicar sobre colunas como:
 Titulo, Ambiente, Ano, Auditoria, Risco, Plano_de_Acao, Responsavel, Status, Avaliação FUP, Observação.
+
+❗️IMPORTANTE: responda apenas com um dicionário JSON válido. Não adicione explicações, nem comentários.
+
+Exemplo:
+{{
+  "Status": "Inadequado",
+  "Ano": "2024"
+}}
 
 Pergunta:
 {consulta}
@@ -761,13 +774,23 @@ Pergunta:
             res_filtro = client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "Responda apenas com um dicionário JSON de filtros."},
+                    {"role": "system", "content": "Você é um assistente técnico. Responda apenas com um JSON válido. Nenhum texto extra."},
                     {"role": "user", "content": prompt_filtro}
                 ],
                 temperature=0
             )
 
-            filtros = json.loads(res_filtro.choices[0].message.content)
+            resposta_texto = res_filtro.choices[0].message.content.strip()
+
+            st.markdown("### 📄 Resposta bruta do modelo:")
+            st.code(resposta_texto)
+
+            try:
+                filtros = json.loads(resposta_texto)
+            except json.JSONDecodeError:
+                st.error("❌ O modelo não retornou um JSON válido. Verifique a resposta acima.")
+                st.stop()
+
             st.markdown("### 🔍 Filtros interpretados:")
             st.json(filtros)
 
@@ -816,5 +839,5 @@ Pergunta:
                 st.warning("Nenhum follow-up encontrado com os critérios identificados.")
 
         except Exception as e:
-            st.error("Erro ao aplicar filtros ou interpretar resposta.")
+            st.error("Erro ao processar filtros ou gerar análise.")
             st.exception(e)
