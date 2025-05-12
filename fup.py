@@ -694,6 +694,7 @@ elif menu == "🔍 Chatbot FUP":
 
     import openai
     from sentence_transformers import SentenceTransformer, util
+    import json
 
     # API da OpenAI
     openai.api_key = st.secrets["openai"]["api_key"]
@@ -726,118 +727,68 @@ elif menu == "🔍 Chatbot FUP":
 
     consulta = st.text_area("📝 Digite sua pergunta ou descrição livre do que procura:")
 
-    if st.button("🔎 Buscar Follow-ups"):
+    if st.button("🔎 Buscar Follow-ups similares"):
         with st.spinner("Analisando similaridade semântica..."):
             consulta_emb = modelo.encode(consulta, convert_to_tensor=True)
             scores = util.cos_sim(consulta_emb, embeddings)[0]
             top_k = min(5, len(scores))
             top_indices = [int(i) for i in scores.argsort(descending=True)[:top_k]]
 
-            st.subheader("🔍 Resultados mais relevantes:")
+            st.subheader("🔍 Resultados mais semelhantes:")
             for idx in top_indices:
-                st.markdown(f"**🎯 Score de similaridade:** `{scores[idx]:.2f}`")
+                st.markdown(f"**🎯 Similaridade:** `{scores[idx]:.2f}`")
                 st.write(df.iloc[idx]["texto_completo"])
                 st.markdown("---")
 
-            if st.button("🧠 Obter resposta Agente"):
-                # 🧠 Prompt para gerar filtros com base na pergunta
-                prompt_filtro = f"""
-            Você é um especialista em análise de auditoria interna. 
-            O usuário fornecerá uma pergunta em linguagem natural. 
-            Sua tarefa é **extrair filtros estruturados** que possam ser aplicados a uma base de dados com as seguintes colunas:
-            
-            - Titulo
-            - Ambiente
-            - Ano
-            - Auditoria
-            - Risco
-            - Plano_de_Acao
-            - Responsavel
-            - Status
-            - Avaliação FUP
-            - Observação
-            
-            **Retorne apenas um dicionário JSON válido** com os filtros. Exemplo:
-            
-            {{
-              "Status": "Inadequado",
-              "Ano": "2024",
-              "Risco": "Alto"
-            }}
-            
-            Pergunta:
-            {consulta}
-            """
-            
-                res_filtro = openai.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "Você é um especialista técnico de dados e deve responder apenas com JSON de filtros para DataFrame pandas."},
-                        {"role": "user", "content": prompt_filtro}
-                    ],
-                    temperature=0
-                )
-            
-                import json
-            
-                try:
-                    filtros = json.loads(res_filtro.choices[0].message.content)
-                    st.markdown("### 🔍 Filtros interpretados:")
-                    st.json(filtros)
-            
-                    def aplicar_filtros(df, filtros: dict):
-                        df_filtrado = df.copy()
-                        for coluna, valor in filtros.items():
-                            if coluna in df.columns:
-                                if isinstance(valor, list):
-                                    df_filtrado = df_filtrado[df_filtrado[coluna].isin(valor)]
-                                else:
-                                    df_filtrado = df_filtrado[df_filtrado[coluna] == valor]
-                        return df_filtrado
-            
-                    df_resultado = aplicar_filtros(df, filtros)
-            
-                    st.subheader("📋 Tabela com os dados filtrados")
-                    if not df_resultado.empty:
-                        st.dataframe(df_resultado, use_container_width=True)
-                        st.success(f"🔢 Total de registros encontrados: {len(df_resultado)}")
-                    else:
-                        st.warning("Nenhum follow-up encontrado com os critérios especificados.")
-            
-                    # Opcional: gerar resposta descritiva
-                    if len(df_resultado) > 0:
-                        contexto = df_resultado.fillna('').astype(str).agg(' '.join, axis=1).str.cat(sep='\n\n')[:8000]
-            
-                        prompt_final = f"""
-            Considere os dados dos follow-ups abaixo (filtrados conforme critérios do usuário) e gere uma resposta analítica breve:
-            
-            {contexto}
-            
-            Pergunta do usuário:
-            {consulta}
-            """
-            
-                        resposta_final = openai.chat.completions.create(
-                            model="gpt-4o",
-                            messages=[
-                                {"role": "system", "content": "Você é um analista de dados de auditoria. Responda de forma clara e objetiva, com base nos dados abaixo."},
-                                {"role": "user", "content": prompt_final}
-                            ],
-                            temperature=0.3
-                        )
-            
-                        st.markdown("### 💬 Análise baseada nos resultados:")
-                        st.write(resposta_final.choices[0].message.content)
-            
-                except Exception as e:
-                    st.error("❌ Ocorreu um erro ao interpretar ou aplicar os filtros.")
-                    st.code(res_filtro.choices[0].message.content)
+    if st.button("🧠 Analisar com Agente de Auditoria"):
+        # 1. Obter filtros estruturados
+        prompt_filtro = f"""
+Você é um assistente de auditoria. Extraia filtros em formato JSON para aplicar sobre colunas como:
+Titulo, Ambiente, Ano, Auditoria, Risco, Plano_de_Acao, Responsavel, Status, Avaliação FUP, Observação.
 
+Pergunta:
+{consulta}
+"""
 
-                prompt_usuario = f"""
-Você é um especialista de auditoria interna. Com base nas informações abaixo dos follow-ups, responda a pergunta do usuário de forma direta e baseada em evidências reais dos registros:
+        res_filtro = openai.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "Responda apenas com um dicionário JSON de filtros."},
+                {"role": "user", "content": prompt_filtro}
+            ],
+            temperature=0
+        )
 
-Follow-ups:
+        try:
+            filtros = json.loads(res_filtro.choices[0].message.content)
+            st.markdown("### 🔍 Filtros interpretados:")
+            st.json(filtros)
+
+            def aplicar_filtros(df, filtros: dict):
+                df_filtrado = df.copy()
+                for coluna, valor in filtros.items():
+                    if coluna in df.columns:
+                        if isinstance(valor, list):
+                            df_filtrado = df_filtrado[df_filtrado[coluna].isin(valor)]
+                        else:
+                            df_filtrado = df_filtrado[df_filtrado[coluna] == valor]
+                return df_filtrado
+
+            df_resultado = aplicar_filtros(df, filtros)
+
+            st.subheader("📋 Tabela com os dados filtrados")
+            if not df_resultado.empty:
+                st.dataframe(df_resultado, use_container_width=True)
+                st.success(f"🔢 Total de registros encontrados: {len(df_resultado)}")
+
+                # Criação do contexto
+                contexto = df_resultado.fillna('').astype(str).agg(' '.join, axis=1).str.cat(sep='\n\n')[:8000]
+
+                # 2. Gerar resposta do agente
+                prompt_analise = f"""
+Considere os dados filtrados abaixo e gere uma resposta analítica, objetiva e baseada em evidências.
+
+Dados:
 {contexto}
 
 Pergunta:
@@ -847,11 +798,17 @@ Pergunta:
                 resposta = openai.chat.completions.create(
                     model="gpt-4o",
                     messages=[
-                        {"role": "system", "content": "Você é um especialista em auditoria interna e follow-ups."},
-                        {"role": "user", "content": prompt_usuario}
+                        {"role": "system", "content": "Você é um especialista em análise de dados de auditoria."},
+                        {"role": "user", "content": prompt_analise}
                     ],
                     temperature=0.3
                 )
 
                 st.markdown("### 💬 Resposta do Agente")
                 st.write(resposta.choices[0].message.content)
+
+            else:
+                st.warning("Nenhum follow-up encontrado com os critérios identificados.")
+        except Exception as e:
+            st.error("Erro ao aplicar filtros ou interpretar resposta.")
+            st.code(res_filtro.choices[0].message.content)
