@@ -15,7 +15,10 @@ from oauth2client.client import OAuth2Credentials
 import httplib2
 import traceback
 import openai
+import json
+import httpx
 from sentence_transformers import SentenceTransformer, util
+from openai import OpenAI
 
 st.set_page_config(layout = 'wide')
 
@@ -692,11 +695,11 @@ elif menu == "Visualizar Evidências":
 elif menu == "🔍 Chatbot FUP":
     st.title("🤖 Chatbot - Consulta Inteligente de Follow-ups")
 
-    import openai
-    from sentence_transformers import SentenceTransformer, util
-    import json
-
-    openai.api_key = st.secrets["openai"]["api_key"]
+    # Cria cliente OpenAI com verificação SSL desativada
+    client = OpenAI(
+        api_key=st.secrets["openai"]["api_key"],
+        http_client=httpx.Client(verify=False)
+    )
 
     @st.cache_resource
     def carregar_modelo():
@@ -726,6 +729,7 @@ elif menu == "🔍 Chatbot FUP":
 
     consulta = st.text_area("📝 Digite sua pergunta ou descrição livre do que procura:")
 
+    # --- Busca por similaridade (texto corrido) ---
     if st.button("🔎 Buscar Follow-ups similares"):
         with st.spinner("🔍 Analisando similaridade semântica..."):
             try:
@@ -743,6 +747,7 @@ elif menu == "🔍 Chatbot FUP":
                 st.error("Erro ao calcular similaridade.")
                 st.exception(e)
 
+    # --- Agente de análise com filtro estruturado ---
     if st.button("🧠 Analisar com Agente de Auditoria"):
         prompt_filtro = f"""
 Você é um assistente de auditoria. Extraia filtros em formato JSON para aplicar sobre colunas como:
@@ -753,7 +758,7 @@ Pergunta:
 """
 
         try:
-            res_filtro = openai.chat.completions.create(
+            res_filtro = client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "Responda apenas com um dicionário JSON de filtros."},
@@ -762,7 +767,7 @@ Pergunta:
                 temperature=0
             )
 
-            filtros = json.loads(res_filtro["choices"][0]["message"]["content"])
+            filtros = json.loads(res_filtro.choices[0].message.content)
             st.markdown("### 🔍 Filtros interpretados:")
             st.json(filtros)
 
@@ -795,7 +800,7 @@ Pergunta:
 {consulta}
 """
 
-                resposta = openai.chat.completions.create(
+                resposta = client.chat.completions.create(
                     model="gpt-4o",
                     messages=[
                         {"role": "system", "content": "Você é um especialista em análise de dados de auditoria."},
@@ -805,7 +810,7 @@ Pergunta:
                 )
 
                 st.markdown("### 💬 Resposta do Agente")
-                st.write(resposta["choices"][0]["message"]["content"])
+                st.write(resposta.choices[0].message.content)
 
             else:
                 st.warning("Nenhum follow-up encontrado com os critérios identificados.")
