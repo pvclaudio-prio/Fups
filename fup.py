@@ -739,9 +739,100 @@ elif menu == "🔍 Chatbot FUP":
                 st.write(df.iloc[idx]["texto_completo"])
                 st.markdown("---")
 
-            if st.button("🧠 Obter mais respostas"):
-                top_textos = [df.iloc[idx]["texto_completo"] for idx in top_indices]
-                contexto = "\n\n".join(top_textos)
+            if st.button("🧠 Obter resposta Agente"):
+                # 🧠 Prompt para gerar filtros com base na pergunta
+                prompt_filtro = f"""
+            Você é um especialista em análise de auditoria interna. 
+            O usuário fornecerá uma pergunta em linguagem natural. 
+            Sua tarefa é **extrair filtros estruturados** que possam ser aplicados a uma base de dados com as seguintes colunas:
+            
+            - Titulo
+            - Ambiente
+            - Ano
+            - Auditoria
+            - Risco
+            - Plano_de_Acao
+            - Responsavel
+            - Status
+            - Avaliação FUP
+            - Observação
+            
+            **Retorne apenas um dicionário JSON válido** com os filtros. Exemplo:
+            
+            {{
+              "Status": "Inadequado",
+              "Ano": "2024",
+              "Risco": "Alto"
+            }}
+            
+            Pergunta:
+            {consulta}
+            """
+            
+                res_filtro = openai.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Você é um especialista técnico de dados e deve responder apenas com JSON de filtros para DataFrame pandas."},
+                        {"role": "user", "content": prompt_filtro}
+                    ],
+                    temperature=0
+                )
+            
+                import json
+            
+                try:
+                    filtros = json.loads(res_filtro.choices[0].message.content)
+                    st.markdown("### 🔍 Filtros interpretados:")
+                    st.json(filtros)
+            
+                    def aplicar_filtros(df, filtros: dict):
+                        df_filtrado = df.copy()
+                        for coluna, valor in filtros.items():
+                            if coluna in df.columns:
+                                if isinstance(valor, list):
+                                    df_filtrado = df_filtrado[df_filtrado[coluna].isin(valor)]
+                                else:
+                                    df_filtrado = df_filtrado[df_filtrado[coluna] == valor]
+                        return df_filtrado
+            
+                    df_resultado = aplicar_filtros(df, filtros)
+            
+                    st.subheader("📋 Tabela com os dados filtrados")
+                    if not df_resultado.empty:
+                        st.dataframe(df_resultado, use_container_width=True)
+                        st.success(f"🔢 Total de registros encontrados: {len(df_resultado)}")
+                    else:
+                        st.warning("Nenhum follow-up encontrado com os critérios especificados.")
+            
+                    # Opcional: gerar resposta descritiva
+                    if len(df_resultado) > 0:
+                        contexto = df_resultado.fillna('').astype(str).agg(' '.join, axis=1).str.cat(sep='\n\n')[:8000]
+            
+                        prompt_final = f"""
+            Considere os dados dos follow-ups abaixo (filtrados conforme critérios do usuário) e gere uma resposta analítica breve:
+            
+            {contexto}
+            
+            Pergunta do usuário:
+            {consulta}
+            """
+            
+                        resposta_final = openai.chat.completions.create(
+                            model="gpt-4o",
+                            messages=[
+                                {"role": "system", "content": "Você é um analista de dados de auditoria. Responda de forma clara e objetiva, com base nos dados abaixo."},
+                                {"role": "user", "content": prompt_final}
+                            ],
+                            temperature=0.3
+                        )
+            
+                        st.markdown("### 💬 Análise baseada nos resultados:")
+                        st.write(resposta_final.choices[0].message.content)
+            
+                except Exception as e:
+                    st.error("❌ Ocorreu um erro ao interpretar ou aplicar os filtros.")
+                    st.code(res_filtro.choices[0].message.content)
+
 
                 prompt_usuario = f"""
 Você é um especialista de auditoria interna. Com base nas informações abaixo dos follow-ups, responda a pergunta do usuário de forma direta e baseada em evidências reais dos registros:
