@@ -696,7 +696,6 @@ elif menu == "🔍 Chatbot FUP":
     from sentence_transformers import SentenceTransformer, util
     import json
 
-    # API da OpenAI
     openai.api_key = st.secrets["openai"]["api_key"]
 
     @st.cache_resource
@@ -727,26 +726,23 @@ elif menu == "🔍 Chatbot FUP":
 
     consulta = st.text_area("📝 Digite sua pergunta ou descrição livre do que procura:")
 
-    # --- Busca por similaridade ---
     if st.button("🔎 Buscar Follow-ups similares"):
-        with st.spinner("🔍 Analisando similaridade com a base de follow-ups..."):
+        with st.spinner("🔍 Analisando similaridade semântica..."):
             try:
                 consulta_emb = modelo.encode(consulta, convert_to_tensor=True)
                 scores = util.cos_sim(consulta_emb, embeddings)[0]
                 top_k = min(5, len(scores))
                 top_indices = [int(i) for i in scores.argsort(descending=True)[:top_k]]
 
-                st.subheader("📋 Detalhes dos Follow-ups semelhantes:")
-                df_similares = df.iloc[top_indices].copy()
-                df_similares["Similaridade"] = [float(scores[idx]) for idx in top_indices]
-
-                st.dataframe(df_similares, use_container_width=True)
-
+                st.subheader("🔍 Resultados mais relevantes:")
+                for idx in top_indices:
+                    st.markdown(f"**🎯 Similaridade:** `{scores[idx]:.2f}`")
+                    st.write(df.iloc[idx]["texto_completo"])
+                    st.markdown("---")
             except Exception as e:
                 st.error("Erro ao calcular similaridade.")
                 st.exception(e)
 
-    # --- Análise estruturada com agente ---
     if st.button("🧠 Analisar com Agente de Auditoria"):
         prompt_filtro = f"""
 Você é um assistente de auditoria. Extraia filtros em formato JSON para aplicar sobre colunas como:
