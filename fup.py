@@ -727,19 +727,26 @@ elif menu == "🔍 Chatbot FUP":
 
     consulta = st.text_area("📝 Digite sua pergunta ou descrição livre do que procura:")
 
+    # --- Busca por similaridade ---
     if st.button("🔎 Buscar Follow-ups similares"):
-        with st.spinner("Analisando similaridade semântica..."):
-            consulta_emb = modelo.encode(consulta, convert_to_tensor=True)
-            scores = util.cos_sim(consulta_emb, embeddings)[0]
-            top_k = min(5, len(scores))
-            top_indices = [int(i) for i in scores.argsort(descending=True)[:top_k]]
+        with st.spinner("🔍 Analisando similaridade com a base de follow-ups..."):
+            try:
+                consulta_emb = modelo.encode(consulta, convert_to_tensor=True)
+                scores = util.cos_sim(consulta_emb, embeddings)[0]
+                top_k = min(5, len(scores))
+                top_indices = [int(i) for i in scores.argsort(descending=True)[:top_k]]
 
-            st.subheader("🔍 Resultados mais semelhantes:")
-            for idx in top_indices:
-                st.markdown(f"**🎯 Similaridade:** `{scores[idx]:.2f}`")
-                st.write(df.iloc[idx]["texto_completo"])
-                st.markdown("---")
+                st.subheader("📋 Detalhes dos Follow-ups semelhantes:")
+                df_similares = df.iloc[top_indices].copy()
+                df_similares["Similaridade"] = [float(scores[idx]) for idx in top_indices]
 
+                st.dataframe(df_similares, use_container_width=True)
+
+            except Exception as e:
+                st.error("Erro ao calcular similaridade.")
+                st.exception(e)
+
+    # --- Análise estruturada com agente ---
     if st.button("🧠 Analisar com Agente de Auditoria"):
         prompt_filtro = f"""
 Você é um assistente de auditoria. Extraia filtros em formato JSON para aplicar sobre colunas como:
@@ -749,16 +756,16 @@ Pergunta:
 {consulta}
 """
 
-        res_filtro = openai.ChatCompletion.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": "Responda apenas com um dicionário JSON de filtros."},
-                {"role": "user", "content": prompt_filtro}
-            ],
-            temperature=0
-        )
-
         try:
+            res_filtro = openai.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "Responda apenas com um dicionário JSON de filtros."},
+                    {"role": "user", "content": prompt_filtro}
+                ],
+                temperature=0
+            )
+
             filtros = json.loads(res_filtro["choices"][0]["message"]["content"])
             st.markdown("### 🔍 Filtros interpretados:")
             st.json(filtros)
@@ -792,7 +799,7 @@ Pergunta:
 {consulta}
 """
 
-                resposta = openai.ChatCompletion.create(
+                resposta = openai.chat.completions.create(
                     model="gpt-4o",
                     messages=[
                         {"role": "system", "content": "Você é um especialista em análise de dados de auditoria."},
@@ -809,4 +816,4 @@ Pergunta:
 
         except Exception as e:
             st.error("Erro ao aplicar filtros ou interpretar resposta.")
-            st.code(res_filtro["choices"][0]["message"]["content"])
+            st.exception(e)
