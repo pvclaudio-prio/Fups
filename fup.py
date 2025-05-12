@@ -739,7 +739,7 @@ elif menu == "🔍 Chatbot FUP":
                 st.write(df.iloc[idx]["texto_completo"])
                 st.markdown("---")
 
-            if st.button("🧠 Obter resposta do GPT-4o"):
+            if st.button("🧠 Obter mais respostas"):
                 top_textos = [df.iloc[idx]["texto_completo"] for idx in top_indices]
                 contexto = "\n\n".join(top_textos)
 
