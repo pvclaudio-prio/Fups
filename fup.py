@@ -697,8 +697,7 @@ elif menu == "Visualizar Evidências":
 
 elif menu == "🔍 Chatbot FUP":
     st.title("🤖 Chatbot FUP com Pergunta Livre")
-
-    # --- Função para carregar a base do followups.csv do Google Drive
+    
     @st.cache_data
     def carregar_followups():
         drive = conectar_drive()
@@ -712,7 +711,6 @@ elif menu == "🔍 Chatbot FUP":
         return pd.read_csv(caminho_temp)
 
     df = carregar_followups()
-
     if df.empty:
         st.warning("Nenhum dado disponível.")
         st.stop()
@@ -722,10 +720,9 @@ elif menu == "🔍 Chatbot FUP":
 
     if prompt_chat:
         st.write(f"🤔 Você: {prompt_chat}")
-
         API_KEY = st.secrets["openai"]["api_key"]
 
-        # --- Tenta extrair termos via regex
+        # --- Extração de filtros via regex
         match = re.search(r"(ambiente|status|auditoria)\s(.+?)(?:\s|$)", prompt_chat, re.IGNORECASE)
         ano_match = re.search(r"(\d{4})", prompt_chat)
 
@@ -739,7 +736,7 @@ elif menu == "🔍 Chatbot FUP":
         if ano_match:
             filtros["Ano"] = ano_match.group(1)
 
-        # --- Aplica filtros simples
+        # --- Aplicar filtros na base
         if filtros:
             df_filtrado = df.copy()
             for col in df_filtrado.select_dtypes(include="object").columns:
@@ -756,26 +753,21 @@ elif menu == "🔍 Chatbot FUP":
         else:
             dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
 
-        # --- Prompt explicativo para o GPT
+        # --- Prompt principal do sistema
         system_prompt = f"""
-# Papel
 Você é um assistente de auditoria interna.
 
-# Objetivo
-Responda de forma objetiva a perguntas sobre follow-ups.
+Sua tarefa é responder perguntas sobre follow-ups com base na base de dados abaixo.
 
-# Instruções:
-- Use a base de dados abaixo para responder.
-- Resuma apenas o que for solicitado.
-- Se a informação não estiver na base, diga que não foi localizada.
-- Use linguagem clara e direta.
-- Não repita informações nem gere texto excessivo.
+Instruções:
+- Seja direto e claro.
+- Se não houver dados, diga claramente.
+- Use a base abaixo como referência única.
 
-# Base de dados:
+Base de dados:
 {dados_markdown}
-        """
+"""
 
-        # Payload principal
         payload = {
             "model": "gpt-4o",
             "messages": [
@@ -791,12 +783,11 @@ Responda de forma objetiva a perguntas sobre follow-ups.
             "Content-Type": "application/json"
         }
 
-        # --- Primeira chamada à API da OpenAI (resposta principal)
         response = requests.post(
             "https://api.openai.com/v1/chat/completions",
             headers=headers,
             json=payload,
-            verify=False  # ⚠️ SSL desativado
+            verify=False  # SSL desativado
         )
 
         if response.status_code == 200:
@@ -807,19 +798,13 @@ Responda de forma objetiva a perguntas sobre follow-ups.
 
         # --- Revisor
         revisor_prompt = f"""
-Você é um revisor de respostas técnicas para auditoria.
+Você é um revisor que deve reescrever a resposta com:
+- Clareza e concisão
+- Correção gramatical
+- Estrutura direta
+Use os dados abaixo como referência:
 
-# Objetivo
-Revisar e reescrever a resposta para que fique:
-- Clara e objetiva
-- Sem repetições
-- Padronizada com a estrutura: situação, número de follow-ups, dados relevantes
-- Sem exageros ou termos técnicos desnecessários
-
-# Base de dados:
 {dados_markdown}
-
-# Resposta original a revisar:
 """
 
         payload_revisor = {
