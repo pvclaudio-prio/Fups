@@ -161,7 +161,8 @@ menu = st.sidebar.radio("Navegar para:", [
     "Meus Follow-ups",
     "Cadastrar Follow-up",
     "Enviar Evidências",
-    "Visualizar Evidências"
+    "Visualizar Evidências",
+    "🔍 Chatbot FUP"
 ])
 
 # --- Conteúdo das páginas ---
@@ -685,3 +686,52 @@ elif menu == "Visualizar Evidências":
     except Exception as e:
         st.error("Erro ao acessar evidências no Google Drive.")
         st.code(traceback.format_exc())
+
+elif menu == "🔍 Chatbot FUP":
+    st.title("🤖 Chatbot - Consulta Inteligente de Follow-ups")
+
+    import openai
+    from sentence_transformers import SentenceTransformer, util
+
+    # Configuração da API
+    openai.api_key = st.secrets["openai_api_key"]  # Defina no secrets.toml
+
+    @st.cache_resource
+    def carregar_modelo():
+        return SentenceTransformer('all-MiniLM-L6-v2')
+
+    @st.cache_data
+    def carregar_followups():
+        drive = conectar_drive()
+        arquivos = drive.ListFile({
+            'q': "title = 'followups.csv' and trashed=false"
+        }).GetList()
+        if not arquivos:
+            return pd.DataFrame()
+        caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
+        arquivos[0].GetContentFile(caminho_temp)
+        return pd.read_csv(caminho_temp)
+
+    modelo = carregar_modelo()
+    df = carregar_followups()
+
+    if df.empty:
+        st.warning("Nenhum follow-up disponível para análise.")
+        st.stop()
+
+    df['texto_completo'] = df.fillna('').astype(str).agg(' '.join, axis=1)
+    embeddings = modelo.encode(df['texto_completo'].tolist(), convert_to_tensor=True)
+
+    consulta = st.text_area("Digite sua pergunta ou descrição livre do que procura:")
+    if st.button("🔎 Buscar"):
+        with st.spinner("Analisando..."):
+            consulta_emb = modelo.encode(consulta, convert_to_tensor=True)
+            scores = util.cos_sim(consulta_emb, embeddings)[0]
+            top_k = min(5, len(scores))
+            top_indices = scores.argsort(descending=True)[:top_k]
+            st.subheader("🔍 Resultados mais relevantes:")
+            for idx in top_indices:
+                st.markdown(f"**🎯 Score:** {scores[idx]:.2f}")
+                st.write(df.iloc[idx]["texto_completo"])
+                st.markdown("---")
+
