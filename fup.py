@@ -692,10 +692,11 @@ elif menu == "Visualizar Evidências":
 elif menu == "🔍 Chatbot FUP":
     st.title("🤖 Chatbot - Consulta Inteligente de Follow-ups")
 
+    import openai
+    from sentence_transformers import SentenceTransformer, util
 
-
-    # Configuração da API
-    openai.api_key = st.secrets["openai_api_key"]  # Defina no secrets.toml
+    # API da OpenAI
+    openai.api_key = st.secrets["openai_api_key"]
 
     @st.cache_resource
     def carregar_modelo():
@@ -723,16 +724,43 @@ elif menu == "🔍 Chatbot FUP":
     df['texto_completo'] = df.fillna('').astype(str).agg(' '.join, axis=1)
     embeddings = modelo.encode(df['texto_completo'].tolist(), convert_to_tensor=True)
 
-    consulta = st.text_area("Digite sua pergunta ou descrição livre do que procura:")
-    if st.button("🔎 Buscar"):
-        with st.spinner("Analisando..."):
+    consulta = st.text_area("📝 Digite sua pergunta ou descrição livre do que procura:")
+
+    if st.button("🔎 Buscar Follow-ups"):
+        with st.spinner("Analisando similaridade semântica..."):
             consulta_emb = modelo.encode(consulta, convert_to_tensor=True)
             scores = util.cos_sim(consulta_emb, embeddings)[0]
             top_k = min(5, len(scores))
             top_indices = scores.argsort(descending=True)[:top_k]
+
             st.subheader("🔍 Resultados mais relevantes:")
             for idx in top_indices:
-                st.markdown(f"**🎯 Score:** {scores[idx]:.2f}")
+                st.markdown(f"**🎯 Score de similaridade:** `{scores[idx]:.2f}`")
                 st.write(df.iloc[idx]["texto_completo"])
                 st.markdown("---")
 
+            if st.button("🧠 Obter resposta do GPT-4o"):
+                top_textos = [df.iloc[idx]["texto_completo"] for idx in top_indices]
+                contexto = "\n\n".join(top_textos)
+
+                prompt_usuario = f"""
+Você é um assistente de auditoria interna. Com base nas informações abaixo dos follow-ups, responda a pergunta do usuário de forma direta e baseada em evidências reais dos registros:
+
+Follow-ups:
+{contexto}
+
+Pergunta:
+{consulta}
+"""
+
+                resposta = openai.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "Você é um especialista em auditoria interna e follow-ups."},
+                        {"role": "user", "content": prompt_usuario}
+                    ],
+                    temperature=0.3
+                )
+
+                st.markdown("### 💬 Resposta do Agente")
+                st.write(resposta.choices[0].message.content)
