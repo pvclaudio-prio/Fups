@@ -695,12 +695,6 @@ elif menu == "Visualizar Evidências":
 elif menu == "🔍 Chatbot FUP":
     st.title("🤖 Chatbot - Consulta Inteligente de Follow-ups")
 
-    import json
-    import httpx
-    from sentence_transformers import SentenceTransformer, util
-    from openai import OpenAI
-
-    # Cliente OpenAI com verificação SSL desativada
     client = OpenAI(
         api_key=st.secrets["openai"]["api_key"],
         http_client=httpx.Client(verify=False)
@@ -734,7 +728,6 @@ elif menu == "🔍 Chatbot FUP":
 
     consulta = st.text_area("📝 Digite sua pergunta ou descrição livre do que procura:")
 
-    # --- Busca por similaridade ---
     if st.button("🔎 Buscar Follow-ups similares"):
         with st.spinner("🔍 Analisando similaridade semântica..."):
             try:
@@ -752,26 +745,20 @@ elif menu == "🔍 Chatbot FUP":
                 st.error("Erro ao calcular similaridade.")
                 st.exception(e)
 
-    # --- Análise com extração de filtros ---
     if st.button("🧠 Analisar com Agente de Auditoria"):
-        colunas_validas = [
-            "Titulo", "Ambiente", "Ano", "Auditoria", "Risco",
-            "Plano_de_Acao", "Responsavel", "E-mail", "Prazo",
-            "Data_Conclusao", "Status", "Avaliação FUP", "Observação"
-        ]
+        colunas_validas = list(df.columns)
 
         prompt_filtro = f"""
-Você é um assistente de auditoria. O usuário fará perguntas em linguagem natural sobre follow-ups.
+Você é um assistente de auditoria. O usuário fará perguntas sobre dados de follow-ups.
 
-Sua tarefa é responder com um dicionário JSON contendo filtros válidos para aplicar ao DataFrame com as colunas abaixo (sensíveis a maiúsculas e minúsculas):
+Responda com um JSON contendo filtros válidos aplicáveis às colunas abaixo (sensíveis a maiúsculas/minúsculas):
 
 {colunas_validas}
 
-Atenção:
-- Responda com JSON **puro**
-- NÃO inclua explicações, markdown ou comentários
-- Verifique se a chave está entre as colunas acima
-- O valor pode ser algo como "Ambiente = Status", pois o campo 'Ambiente' pode conter palavras como "Status"
+⚠️ Importante:
+- Retorne apenas um JSON puro
+- Não inclua comentários, explicações ou markdown
+- O campo 'Ambiente' pode conter valores como 'Status' ou 'RM', por exemplo
 
 Pergunta:
 {consulta}
@@ -781,7 +768,7 @@ Pergunta:
             res_filtro = client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "Você é um assistente técnico. Responda apenas com JSON puro e válido, sem explicações."},
+                    {"role": "system", "content": "Você é um assistente técnico de auditoria. Responda com JSON puro. Nenhuma explicação."},
                     {"role": "user", "content": prompt_filtro}
                 ],
                 temperature=0
@@ -789,7 +776,6 @@ Pergunta:
 
             resposta_texto = res_filtro.choices[0].message.content.strip()
 
-            # Limpa blocos de markdown (```json)
             if resposta_texto.startswith("```"):
                 resposta_texto = resposta_texto.strip("`")
                 resposta_texto = "\n".join(resposta_texto.split("\n")[1:]).strip()
@@ -803,8 +789,8 @@ Pergunta:
                 st.error("❌ O modelo não retornou um JSON válido.")
                 st.stop()
 
-            # Elimina filtros com chaves inválidas
-            filtros = {k: v for k, v in filtros.items() if k in df.columns}
+            # Valida colunas e remove inválidas
+            filtros = {k.strip(): v for k, v in filtros.items() if k.strip() in df.columns}
 
             st.markdown("### 🔍 Filtros interpretados:")
             st.json(filtros)
@@ -812,18 +798,23 @@ Pergunta:
             def aplicar_filtros(df, filtros: dict):
                 df_filtrado = df.copy()
 
-                # Padroniza os campos de texto para comparação robusta
+                # Normaliza os campos de texto no DataFrame
                 for col in df_filtrado.select_dtypes(include="object").columns:
                     df_filtrado[col] = df_filtrado[col].astype(str).str.strip().str.lower()
 
-                for coluna, valor in filtros.items():
+                # Normaliza os valores dos filtros
+                filtros_normalizados = {
+                    k: [str(v).strip().lower() for v in v] if isinstance(v, list)
+                    else str(v).strip().lower()
+                    for k, v in filtros.items()
+                }
+
+                for coluna, valor in filtros_normalizados.items():
                     if coluna in df_filtrado.columns:
                         if isinstance(valor, list):
-                            valores = [str(v).strip().lower() for v in valor]
-                            df_filtrado = df_filtrado[df_filtrado[coluna].isin(valores)]
+                            df_filtrado = df_filtrado[df_filtrado[coluna].isin(valor)]
                         else:
-                            valor_normalizado = str(valor).strip().lower()
-                            df_filtrado = df_filtrado[df_filtrado[coluna] == valor_normalizado]
+                            df_filtrado = df_filtrado[df_filtrado[coluna] == valor]
 
                 return df_filtrado
 
@@ -837,7 +828,7 @@ Pergunta:
                 contexto = df_resultado.fillna('').astype(str).agg(' '.join, axis=1).str.cat(sep='\n\n')[:8000]
 
                 prompt_analise = f"""
-Com base nos dados a seguir, gere uma resposta analítica e objetiva:
+Com base nos dados abaixo, gere uma resposta analítica e objetiva:
 
 {contexto}
 
@@ -856,6 +847,7 @@ Pergunta:
 
                 st.markdown("### 💬 Resposta do Agente")
                 st.write(resposta.choices[0].message.content)
+
             else:
                 st.warning("Nenhum follow-up encontrado com os critérios identificados.")
 
