@@ -696,8 +696,7 @@ elif menu == "🔍 Chatbot FUP":
     from sentence_transformers import SentenceTransformer, util
 
     # API da OpenAI
-    st.write("Chave carregada:", st.secrets["OPENAI_API_KEY"])
-    openai.api_key = st.secrets["OPENAI_API_KEY"]
+    openai.api_key = st.secrets["openai"]["api_key"]
 
     @st.cache_resource
     def carregar_modelo():
