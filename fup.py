@@ -734,7 +734,7 @@ elif menu == "🔍 Chatbot FUP":
 
     consulta = st.text_area("📝 Digite sua pergunta ou descrição livre do que procura:")
 
-    # --- Busca por similaridade (em texto corrido) ---
+    # --- Busca por similaridade ---
     if st.button("🔎 Buscar Follow-ups similares"):
         with st.spinner("🔍 Analisando similaridade semântica..."):
             try:
@@ -752,7 +752,7 @@ elif menu == "🔍 Chatbot FUP":
                 st.error("Erro ao calcular similaridade.")
                 st.exception(e)
 
-    # --- Análise estruturada com extração de filtros ---
+    # --- Análise com filtros estruturados ---
     if st.button("🧠 Analisar com Agente de Auditoria"):
         prompt_filtro = f"""
 Você é um assistente de auditoria. Extraia filtros em formato JSON puro para aplicar sobre colunas como:
@@ -774,13 +774,18 @@ Pergunta:
             res_filtro = client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "Você é um assistente técnico. Responda apenas com um JSON válido. Nenhum texto extra."},
+                    {"role": "system", "content": "Você é um assistente técnico. Responda apenas com JSON puro. Sem comentários, sem texto extra."},
                     {"role": "user", "content": prompt_filtro}
                 ],
                 temperature=0
             )
 
             resposta_texto = res_filtro.choices[0].message.content.strip()
+
+            # Limpeza automática de blocos markdown
+            if resposta_texto.startswith("```"):
+                resposta_texto = resposta_texto.strip("`")
+                resposta_texto = "\n".join(resposta_texto.split("\n")[1:]).strip()
 
             st.markdown("### 📄 Resposta bruta do modelo:")
             st.code(resposta_texto)
