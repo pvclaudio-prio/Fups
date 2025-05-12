@@ -696,7 +696,7 @@ elif menu == "🔍 Chatbot FUP":
     from sentence_transformers import SentenceTransformer, util
 
     # API da OpenAI
-    openai.api_key = st.secrets["openai_api_key"]
+    openai.api_key = st.secrets["OPENAI_API_KEY"]
 
     @st.cache_resource
     def carregar_modelo():
@@ -744,7 +744,7 @@ elif menu == "🔍 Chatbot FUP":
                 contexto = "\n\n".join(top_textos)
 
                 prompt_usuario = f"""
-Você é um assistente de auditoria interna. Com base nas informações abaixo dos follow-ups, responda a pergunta do usuário de forma direta e baseada em evidências reais dos registros:
+Você é um especialista de auditoria interna. Com base nas informações abaixo dos follow-ups, responda a pergunta do usuário de forma direta e baseada em evidências reais dos registros:
 
 Follow-ups:
 {contexto}
