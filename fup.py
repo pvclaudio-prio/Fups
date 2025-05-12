@@ -731,7 +731,7 @@ elif menu == "🔍 Chatbot FUP":
             consulta_emb = modelo.encode(consulta, convert_to_tensor=True)
             scores = util.cos_sim(consulta_emb, embeddings)[0]
             top_k = min(5, len(scores))
-            top_indices = scores.argsort(descending=True)[:top_k]
+            top_indices = [int(i) for i in scores.argsort(descending=True)[:top_k]]
 
             st.subheader("🔍 Resultados mais relevantes:")
             for idx in top_indices:
