@@ -14,6 +14,8 @@ import json
 from oauth2client.client import OAuth2Credentials
 import httplib2
 import traceback
+import openai
+from sentence_transformers import SentenceTransformer, util
 
 st.set_page_config(layout = 'wide')
 
@@ -690,8 +692,7 @@ elif menu == "Visualizar Evidências":
 elif menu == "🔍 Chatbot FUP":
     st.title("🤖 Chatbot - Consulta Inteligente de Follow-ups")
 
-    import openai
-    from sentence_transformers import SentenceTransformer, util
+
 
     # Configuração da API
     openai.api_key = st.secrets["openai_api_key"]  # Defina no secrets.toml
