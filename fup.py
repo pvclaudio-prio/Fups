@@ -19,6 +19,8 @@ import json
 import httpx
 from sentence_transformers import SentenceTransformer, util
 from openai import OpenAI
+import json
+import requests
 
 st.set_page_config(layout = 'wide')
 
@@ -693,169 +695,135 @@ elif menu == "Visualizar Evidências":
         st.code(traceback.format_exc())
 
 elif menu == "🔍 Chatbot FUP":
-    st.title("🤖 Chatbot - Consulta Inteligente de Follow-ups")
+    st.title("🤖 Chatbot FUP com Busca Inteligente")
 
-    client = OpenAI(
-        api_key=st.secrets["openai"]["api_key"],
-        http_client=httpx.Client(verify=False)
-    )
-
-    @st.cache_resource
-    def carregar_modelo():
-        return SentenceTransformer('all-MiniLM-L6-v2')
-
-    @st.cache_data
-    def carregar_followups():
-        drive = conectar_drive()
-        arquivos = drive.ListFile({
-            'q': "title = 'followups.csv' and trashed=false"
-        }).GetList()
-        if not arquivos:
-            return pd.DataFrame()
-        caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
-        arquivos[0].GetContentFile(caminho_temp)
-        return pd.read_csv(caminho_temp)
-
-    modelo = carregar_modelo()
-    df = carregar_followups()
+    df = carregar_followups()  # já definido anteriormente no seu app
 
     if df.empty:
-        st.warning("Nenhum follow-up disponível para análise.")
+        st.warning("Nenhum dado disponível.")
         st.stop()
 
-    df['texto_completo'] = df.fillna('').astype(str).agg(' '.join, axis=1)
-    embeddings = modelo.encode(df['texto_completo'].tolist(), convert_to_tensor=True)
+    prompt_chat = st.chat_input("Faça uma pergunta sobre seus follow-ups")
+    resposta_final = "❌ Nenhuma resposta foi gerada."
 
-    consulta = st.text_area("📝 Digite sua pergunta ou descrição livre do que procura:")
+    if prompt_chat:
+        st.write(f"🤔 Você: {prompt_chat}")
 
-    if st.button("🔎 Buscar Follow-ups similares"):
-        with st.spinner("🔍 Analisando similaridade semântica..."):
-            try:
-                consulta_emb = modelo.encode(consulta, convert_to_tensor=True)
-                scores = util.cos_sim(consulta_emb, embeddings)[0]
-                top_k = min(5, len(scores))
-                top_indices = [int(i) for i in scores.argsort(descending=True)[:top_k]]
+        API_KEY = st.secrets["openai"]["api_key"]
 
-                st.subheader("🔍 Resultados mais relevantes:")
-                for idx in top_indices:
-                    st.markdown(f"**🎯 Similaridade:** `{scores[idx]:.2f}`")
-                    st.write(df.iloc[idx]["texto_completo"])
-                    st.markdown("---")
-            except Exception as e:
-                st.error("Erro ao calcular similaridade.")
-                st.exception(e)
+        # Tenta identificar palavra-chave de filtro: ambiente, ano, status
+        match = re.search(r"(ambiente|status|auditoria)\s(.+?)(?:\s|$)", prompt_chat, re.IGNORECASE)
+        ano_match = re.search(r"(\d{4})", prompt_chat)
 
-    if st.button("🧠 Analisar com Agente de Auditoria"):
-        colunas_validas = list(df.columns)
+        filtros = {}
+        if match:
+            campo = match.group(1).strip().capitalize()
+            valor = match.group(2).strip()
+            if campo in df.columns:
+                filtros[campo] = valor
 
-        prompt_filtro = f"""
-Você é um assistente de auditoria. O usuário fará perguntas sobre dados de follow-ups.
+        if ano_match:
+            filtros["Ano"] = ano_match.group(1)
 
-Responda com um dicionário JSON puro contendo filtros válidos com base nas colunas a seguir:
+        # Aplica filtros simples
+        if filtros:
+            df_filtrado = df.copy()
+            for col in df_filtrado.select_dtypes(include="object").columns:
+                df_filtrado[col] = df_filtrado[col].astype(str).str.lower().str.strip()
 
-{colunas_validas}
-
-⚠️ DICA IMPORTANTE:
-- Não invente colunas. Use apenas as listadas acima.
-- Exemplo: se o valor mencionado for "Inadequado", verifique em qual coluna ele realmente aparece (por exemplo: "Ambiente").
-- Retorne exatamente o nome correto da coluna, com a capitalização exata (case-sensitive).
-
-Retorne apenas o JSON. Nenhum texto extra.
-
-Pergunta:
-{consulta}
-"""
-
-        try:
-            res_filtro = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": "Você é um assistente técnico. Retorne somente JSON válido. Nenhuma explicação."},
-                    {"role": "user", "content": prompt_filtro}
-                ],
-                temperature=0
-            )
-
-            resposta_texto = res_filtro.choices[0].message.content.strip()
-
-            if resposta_texto.startswith("```"):
-                resposta_texto = resposta_texto.strip("`")
-                resposta_texto = "\n".join(resposta_texto.split("\n")[1:]).strip()
-
-            st.markdown("### 📄 Resposta bruta do modelo:")
-            st.code(resposta_texto)
-
-            try:
-                filtros = json.loads(resposta_texto)
-            except json.JSONDecodeError:
-                st.error("❌ O modelo não retornou um JSON válido.")
-                st.stop()
-
-            # Mapeia colunas ignorando capitalização e espaços
-            colunas_df = {col.strip().lower(): col for col in df.columns}
-            filtros_corrigidos = {}
             for k, v in filtros.items():
-                chave_normalizada = k.strip().lower()
-                if chave_normalizada in colunas_df:
-                    filtros_corrigidos[colunas_df[chave_normalizada]] = v
-            filtros = filtros_corrigidos
+                if k in df_filtrado.columns:
+                    df_filtrado = df_filtrado[df_filtrado[k].str.contains(str(v).lower().strip(), na=False)]
 
-            st.markdown("### 🔍 Filtros interpretados:")
-            st.json(filtros)
-
-            def aplicar_filtros(df, filtros: dict):
-                df_filtrado = df.copy()
-
-                for col in df_filtrado.select_dtypes(include="object").columns:
-                    df_filtrado[col] = df_filtrado[col].astype(str).str.strip().str.lower()
-
-                filtros_normalizados = {
-                    k: [str(v).strip().lower() for v in v] if isinstance(v, list)
-                    else str(v).strip().lower()
-                    for k, v in filtros.items()
-                }
-
-                for coluna, valor in filtros_normalizados.items():
-                    if coluna in df_filtrado.columns:
-                        if isinstance(valor, list):
-                            df_filtrado = df_filtrado[df_filtrado[coluna].isin(valor)]
-                        else:
-                            df_filtrado = df_filtrado[df_filtrado[coluna] == valor]
-
-                return df_filtrado
-
-            df_resultado = aplicar_filtros(df, filtros)
-
-            st.subheader("📋 Tabela com os dados filtrados")
-            if not df_resultado.empty:
-                st.dataframe(df_resultado, use_container_width=True)
-                st.success(f"🔢 Total de registros encontrados: {len(df_resultado)}")
-
-                contexto = df_resultado.fillna('').astype(str).agg(' '.join, axis=1).str.cat(sep='\n\n')[:8000]
-
-                prompt_analise = f"""
-Com base nos dados abaixo, gere uma resposta analítica e objetiva:
-
-{contexto}
-
-Pergunta:
-{consulta}
-"""
-
-                resposta = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "Você é um analista de dados de auditoria."},
-                        {"role": "user", "content": prompt_analise}
-                    ],
-                    temperature=0.3
-                )
-
-                st.markdown("### 💬 Resposta do Agente")
-                st.write(resposta.choices[0].message.content)
+            if not df_filtrado.empty:
+                dados_markdown = df_filtrado.fillna("").astype(str).to_markdown(index=False)
             else:
-                st.warning("Nenhum follow-up encontrado com os critérios identificados.")
+                dados_markdown = "❌ Nenhum follow-up encontrado com os critérios especificados."
+        else:
+            dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
 
-        except Exception as e:
-            st.error("Erro ao processar filtros ou gerar análise.")
-            st.exception(e)
+        # Construir o system prompt
+        system_prompt = f"""
+# Papel
+Você é um assistente de auditoria interna.
+
+# Objetivo
+Responda de forma objetiva a perguntas sobre a base de dados de follow-ups.
+
+# Instruções:
+- Use a base de dados abaixo para responder.
+- Resuma apenas o que for solicitado.
+- Se a informação não estiver na base, diga que não foi localizada.
+- Use linguagem clara e direta.
+
+# Base de dados:
+{dados_markdown}
+        """
+
+        # Payload principal
+        payload = {
+            "model": "gpt-4o",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt_chat}
+            ],
+            "temperature": 0.2,
+            "max_tokens": 500
+        }
+
+        headers = {
+            "Authorization": f"Bearer {API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        # Primeira chamada para o GPT (consulta)
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            verify=False  # SSL desativado
+        )
+
+        if response.status_code == 200:
+            resposta_parte = response.json()["choices"][0]["message"]["content"]
+            resposta_final = resposta_parte
+        else:
+            resposta_final = f"Erro na API: {response.status_code} - {response.text}"
+
+        # Revisor
+        payload_revisor = {
+            "model": "gpt-4o",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": f"""
+Você é um revisor de respostas técnicas para auditoria interna.
+Garanta que a resposta seja direta, clara, sem repetições e com estrutura objetiva.
+
+Use esta base de referência:
+{dados_markdown}
+
+Revisar:
+"""
+                },
+                {"role": "user", "content": resposta_final}
+            ],
+            "temperature": 0.2,
+            "max_tokens": 500
+        }
+
+        response_revisor = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=payload_revisor,
+            verify=False
+        )
+
+        if response_revisor.status_code == 200:
+            resposta_final = response_revisor.json()["choices"][0]["message"]["content"]
+        else:
+            resposta_final = f"(Erro ao revisar resposta: {response_revisor.status_code})\n\n{resposta_final}"
+
+        # Exibe a resposta final do assistente
+        with st.chat_message("assistant"):
+            st.write(resposta_final)
