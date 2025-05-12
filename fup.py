@@ -741,7 +741,6 @@ elif menu == "🔍 Chatbot FUP":
                 st.markdown("---")
 
     if st.button("🧠 Analisar com Agente de Auditoria"):
-        # 1. Obter filtros estruturados
         prompt_filtro = f"""
 Você é um assistente de auditoria. Extraia filtros em formato JSON para aplicar sobre colunas como:
 Titulo, Ambiente, Ano, Auditoria, Risco, Plano_de_Acao, Responsavel, Status, Avaliação FUP, Observação.
@@ -750,7 +749,7 @@ Pergunta:
 {consulta}
 """
 
-        res_filtro = openai.chat.completions.create(
+        res_filtro = openai.ChatCompletion.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": "Responda apenas com um dicionário JSON de filtros."},
@@ -760,7 +759,7 @@ Pergunta:
         )
 
         try:
-            filtros = json.loads(res_filtro.choices[0].message.content)
+            filtros = json.loads(res_filtro["choices"][0]["message"]["content"])
             st.markdown("### 🔍 Filtros interpretados:")
             st.json(filtros)
 
@@ -781,10 +780,8 @@ Pergunta:
                 st.dataframe(df_resultado, use_container_width=True)
                 st.success(f"🔢 Total de registros encontrados: {len(df_resultado)}")
 
-                # Criação do contexto
                 contexto = df_resultado.fillna('').astype(str).agg(' '.join, axis=1).str.cat(sep='\n\n')[:8000]
 
-                # 2. Gerar resposta do agente
                 prompt_analise = f"""
 Considere os dados filtrados abaixo e gere uma resposta analítica, objetiva e baseada em evidências.
 
@@ -795,7 +792,7 @@ Pergunta:
 {consulta}
 """
 
-                resposta = openai.chat.completions.create(
+                resposta = openai.ChatCompletion.create(
                     model="gpt-4o",
                     messages=[
                         {"role": "system", "content": "Você é um especialista em análise de dados de auditoria."},
@@ -805,10 +802,11 @@ Pergunta:
                 )
 
                 st.markdown("### 💬 Resposta do Agente")
-                st.write(resposta.choices[0].message.content)
+                st.write(resposta["choices"][0]["message"]["content"])
 
             else:
                 st.warning("Nenhum follow-up encontrado com os critérios identificados.")
+
         except Exception as e:
             st.error("Erro ao aplicar filtros ou interpretar resposta.")
-            st.code(res_filtro.choices[0].message.content)
+            st.code(res_filtro["choices"][0]["message"]["content"])
