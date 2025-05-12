@@ -751,14 +751,16 @@ elif menu == "🔍 Chatbot FUP":
         prompt_filtro = f"""
 Você é um assistente de auditoria. O usuário fará perguntas sobre dados de follow-ups.
 
-Responda com um JSON contendo filtros válidos aplicáveis às colunas abaixo (sensíveis a maiúsculas/minúsculas):
+Responda com um dicionário JSON puro contendo filtros válidos com base nas colunas a seguir:
 
 {colunas_validas}
 
-⚠️ Importante:
-- Retorne apenas um JSON puro
-- Não inclua comentários, explicações ou markdown
-- O campo 'Ambiente' pode conter valores como 'Status' ou 'RM', por exemplo
+⚠️ DICA IMPORTANTE:
+- Não invente colunas. Use apenas as listadas acima.
+- Exemplo: se o valor mencionado for "Inadequado", verifique em qual coluna ele realmente aparece (por exemplo: "Ambiente").
+- Retorne exatamente o nome correto da coluna, com a capitalização exata (case-sensitive).
+
+Retorne apenas o JSON. Nenhum texto extra.
 
 Pergunta:
 {consulta}
@@ -768,7 +770,7 @@ Pergunta:
             res_filtro = client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "Você é um assistente técnico de auditoria. Responda com JSON puro. Nenhuma explicação."},
+                    {"role": "system", "content": "Você é um assistente técnico. Retorne somente JSON válido. Nenhuma explicação."},
                     {"role": "user", "content": prompt_filtro}
                 ],
                 temperature=0
@@ -789,8 +791,14 @@ Pergunta:
                 st.error("❌ O modelo não retornou um JSON válido.")
                 st.stop()
 
-            # Valida colunas e remove inválidas
-            filtros = {k.strip(): v for k, v in filtros.items() if k.strip() in df.columns}
+            # Mapeia colunas ignorando capitalização e espaços
+            colunas_df = {col.strip().lower(): col for col in df.columns}
+            filtros_corrigidos = {}
+            for k, v in filtros.items():
+                chave_normalizada = k.strip().lower()
+                if chave_normalizada in colunas_df:
+                    filtros_corrigidos[colunas_df[chave_normalizada]] = v
+            filtros = filtros_corrigidos
 
             st.markdown("### 🔍 Filtros interpretados:")
             st.json(filtros)
@@ -798,11 +806,9 @@ Pergunta:
             def aplicar_filtros(df, filtros: dict):
                 df_filtrado = df.copy()
 
-                # Normaliza os campos de texto no DataFrame
                 for col in df_filtrado.select_dtypes(include="object").columns:
                     df_filtrado[col] = df_filtrado[col].astype(str).str.strip().str.lower()
 
-                # Normaliza os valores dos filtros
                 filtros_normalizados = {
                     k: [str(v).strip().lower() for v in v] if isinstance(v, list)
                     else str(v).strip().lower()
@@ -847,7 +853,6 @@ Pergunta:
 
                 st.markdown("### 💬 Resposta do Agente")
                 st.write(resposta.choices[0].message.content)
-
             else:
                 st.warning("Nenhum follow-up encontrado com os critérios identificados.")
 
