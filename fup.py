@@ -732,10 +732,10 @@ elif menu == "🔍 Chatbot FUP":
         API_KEY = st.secrets["openai"]["api_key"]
         filtros = {}
 
-        # ✅ Regex segura para capturar valores compostos como "status inadequado"
         if isinstance(prompt_chat, str) and prompt_chat:
             st.write("🔍 Rodando re.search com:", prompt_chat)
 
+            # ✅ Regex segura e completa
             match = re.search(r"(ambiente|status|auditoria)\s+([^\d\n]+)", prompt_chat, re.IGNORECASE)
             ano_match = re.search(r"(\d{4})", prompt_chat)
 
@@ -768,7 +768,7 @@ elif menu == "🔍 Chatbot FUP":
         else:
             dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
 
-        # 🧠 Prompt para o agente
+        # 🧠 Prompt para análise
         system_prompt = f"""
 Você é um assistente de auditoria interna.
 
@@ -849,4 +849,3 @@ Base de dados:
             st.dataframe(df_filtrado, use_container_width=True)
         else:
             st.info("Nenhum follow-up encontrado com os critérios aplicados.")
-
