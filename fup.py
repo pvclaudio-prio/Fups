@@ -699,7 +699,7 @@ elif menu == "Visualizar Evidências":
 
 elif menu == "🔍 Chatbot FUP":
 
-    st.title("🤖 Chatbot FUP com Pergunta Livre")
+    st.title("🤖 Chatbot Auditoria")
 
     @st.cache_data
     def carregar_followups():
@@ -798,7 +798,7 @@ elif menu == "🔍 Chatbot FUP":
 
         # 🧠 Prompt para análise
         system_prompt = f"""
-Você é um assistente de auditoria interna.
+Você é um especialista de auditoria interna.
 
 Sua tarefa é responder perguntas com base nos follow-ups abaixo, de forma clara, objetiva e profissional.
 
@@ -869,7 +869,7 @@ Base de dados:
             resposta_final = f"(Erro ao revisar resposta: {response_revisor.status_code})\n\n{resposta_final}"
 
         # 💬 Exibir resposta e base
-        st.markdown("### 💬 Resposta do Assistente")
+        st.markdown("### 💬 Resposta do Agente")
         st.write(resposta_final)
 
         st.markdown("### 📋 Follow-ups encontrados:")
