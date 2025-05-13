@@ -697,6 +697,17 @@ elif menu == "Visualizar Evidências":
 
 elif menu == "🔍 Chatbot FUP":
     st.title("🤖 Chatbot FUP com Pergunta Livre")
+    @st.cache_data
+    def carregar_followups():
+        drive = conectar_drive()
+        arquivos = drive.ListFile({
+            'q': "title = 'followups.csv' and trashed=false"
+        }).GetList()
+        if not arquivos:
+            return pd.DataFrame()
+        caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
+        arquivos[0].GetContentFile(caminho_temp)
+        return pd.read_csv(caminho_temp)
 
     df = carregar_followups()
     if df.empty:
