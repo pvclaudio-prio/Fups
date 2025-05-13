@@ -163,7 +163,7 @@ users = {
     "amendonca": {"name": "Alex Mendonça", "password": "1234"},
     "mathayde": {"name": "Maria Luiza", "password": "1234"},
     "bella": {"name": "Isabella Miranda", "password": "1234"},
-    "ysouza": {"name": "Isabella Miranda", "password": "compliance"}
+    "ysouza": {"name": "Yasmim Souza", "password": "compliance"}
 }
 
 if "logged_in" not in st.session_state:
