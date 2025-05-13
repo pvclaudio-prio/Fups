@@ -823,32 +823,36 @@ elif menu == "🔍 Chatbot FUP":
         # Gera versão textual da base total
         df_completo_markdown = df.fillna("").astype(str).to_markdown(index=False)
         system_prompt = f"""
-Você é um analista sênior de auditoria interna com acesso completo aos dados de follow-ups.
+Você é um analista sênior de auditoria interna com acesso a duas bases de dados:
 
-Sua tarefa é responder perguntas com base nas duas bases abaixo:
+1. **Base completa (`df_completo`)**: contém todos os follow-ups de auditoria disponíveis.
+2. **Base filtrada (`dados_filtrados`)**: contém apenas os registros mais relevantes com base na pergunta do usuário.
 
-### Base 1: Base filtrada com base na pergunta do usuário
-Essa base já aplica palavras-chave extraídas do chat e mostra os registros mais relevantes.
-Use-a como foco principal da resposta.
+Sua missão é:
+- Responder com base **principalmente na base filtrada**, mas sempre **comparando com a base total**.
+- Informar quantos registros estão na base total e quantos foram filtrados.
+- Indicar percentuais, tendências ou discrepâncias entre as duas bases.
+- Apontar quando um filtro reduz muito a base (ex: “apenas 3 dos 50 registros totais possuem esse status”).
 
+---
+
+### Base filtrada (`dados_filtrados`):
 {dados_markdown}
 
-### Base 2: Base completa com todos os follow-ups
-Use essa base para comparar e trazer contexto. Gere análises comparativas, como:
-- Proporção do total
-- Distribuição por ano, status, risco
-- Comparação de ocorrências
+---
 
+### Base completa (`df_completo`):
 {df_completo_markdown}
 
-### Instruções para sua resposta:
-- Seja claro, técnico e direto.
-- Aponte se a base filtrada representa uma pequena ou grande parte da base total.
-- Use percentuais e quantidades absolutas.
-- Dê destaque a observações relevantes (ex: “a maioria dos registros filtrados tem risco alto”).
-- Se nada for encontrado, diga: "Não há registros compatíveis".
-- Evite repetições, generalizações e floreios.
+---
+
+### Instruções finais:
+- Se a base filtrada estiver vazia, diga “Não há registros compatíveis”.
+- Seja direto, técnico e conciso.
+- Use contagens e percentuais sempre que possível.
+- Evite respostas genéricas, repetições ou rodeios.
 """
+
         payload = {
             "model": "gpt-4o",
             "messages": [
