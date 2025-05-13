@@ -698,6 +698,7 @@ elif menu == "Visualizar Evidências":
 elif menu == "🔍 Chatbot FUP":
     import re
     import pandas as pd
+    from difflib import get_close_matches
 
     st.title("🤖 Chatbot FUP com Pergunta Livre")
 
@@ -726,7 +727,7 @@ elif menu == "🔍 Chatbot FUP":
         st.write("✅ Botão 'Enviar' pressionado")
 
         if pergunta and isinstance(pergunta, str):
-            prompt_chat = pergunta.strip()
+            prompt_chat = pergunta.strip().lower()
             st.write("✅ prompt_chat recebido:", prompt_chat)
         else:
             st.error("❌ Nenhuma pergunta válida recebida.")
@@ -735,38 +736,40 @@ elif menu == "🔍 Chatbot FUP":
         API_KEY = st.secrets["openai"]["api_key"]
         filtros = {}
 
-        if isinstance(prompt_chat, str) and prompt_chat:
-            st.write("🔍 Analisando onde aplicar o filtro...")
+        st.write("🔍 Analisando valores semelhantes nas colunas...")
 
-            # Extrai o valor relevante da frase
-            match = re.search(r"(?:status|ambiente|auditoria)?\s*([\w\s\-]+)", prompt_chat, re.IGNORECASE)
-            ano_match = re.search(r"(\d{4})", prompt_chat)
+        # Pré-processa valores únicos das colunas textuais
+        valores_unicos = {}
+        for col in df.select_dtypes(include="object").columns:
+            valores_unicos[col] = df[col].astype(str).str.lower().str.strip().unique().tolist()
 
-            coluna_encontrada = None
-            valor_extraido = None
+        # Tokeniza o prompt
+        tokens = re.findall(r"\w+", prompt_chat)
 
-            if match:
-                valor_extraido = match.group(1).strip().lower()
-                st.write(f"🔎 Valor extraído: {valor_extraido}")
+        melhor_match = None
+        melhor_coluna = None
 
-                # Busca qual coluna textual contém mais ocorrências do valor
-                candidatos = []
-                for col in df.select_dtypes(include="object").columns:
-                    conteudo = df[col].astype(str).str.lower().str.strip()
-                    contagem = conteudo.str.contains(valor_extraido, na=False).sum()
-                    if contagem > 0:
-                        candidatos.append((col, contagem))
+        for token in tokens:
+            for col, valores in valores_unicos.items():
+                match = get_close_matches(token, valores, n=1, cutoff=0.8)
+                if match:
+                    melhor_match = match[0]
+                    melhor_coluna = col
+                    break
+            if melhor_match:
+                break
 
-                if candidatos:
-                    coluna_encontrada = sorted(candidatos, key=lambda x: x[1], reverse=True)[0][0]
-                    st.write(f"📌 Coluna com maior correspondência: {coluna_encontrada}")
-                    filtros[coluna_encontrada] = valor_extraido
-                else:
-                    st.warning("⚠️ Nenhuma coluna textual contém esse valor.")
+        if melhor_match and melhor_coluna:
+            filtros[melhor_coluna] = melhor_match
+            st.write(f"📌 Valor interpretado: `{melhor_match}` na coluna `{melhor_coluna}`")
+        else:
+            st.warning("⚠️ Nenhuma coluna textual contém esse valor.")
 
-            if ano_match:
-                filtros["Ano"] = ano_match.group(1)
-                st.write("📅 Ano identificado:", filtros["Ano"])
+        # Extrair ano
+        ano_match = re.search(r"(\d{4})", prompt_chat)
+        if ano_match:
+            filtros["Ano"] = ano_match.group(1)
+            st.write("📅 Ano identificado:", filtros["Ano"])
 
         # 📊 Aplicar filtros
         if filtros:
@@ -783,7 +786,7 @@ elif menu == "🔍 Chatbot FUP":
                 try:
                     dados_markdown = df_filtrado.fillna("").astype(str).to_markdown(index=False)
                 except ImportError:
-                    st.warning("⚠️ A biblioteca `tabulate` não está instalada. Instale com `pip install tabulate`.")
+                    st.warning("⚠️ Instale `tabulate` para melhor formatação: `pip install tabulate`")
                     dados_markdown = df_filtrado.fillna("").astype(str).to_csv(index=False, sep=";")
             else:
                 dados_markdown = "❌ Nenhum follow-up encontrado com os critérios especificados."
@@ -791,7 +794,7 @@ elif menu == "🔍 Chatbot FUP":
             try:
                 dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
             except ImportError:
-                st.warning("⚠️ A biblioteca `tabulate` não está instalada. Instale com `pip install tabulate`.")
+                st.warning("⚠️ Instale `tabulate` para melhor formatação: `pip install tabulate`")
                 dados_markdown = df.fillna("").astype(str).to_csv(index=False, sep=";")
 
         # 🧠 Prompt para análise
@@ -832,7 +835,7 @@ Base de dados:
         else:
             resposta_final = f"Erro na API: {response.status_code} - {response.text}"
 
-        # 🔁 Revisor GPT
+        # 🔁 Revisor
         revisor_prompt = f"""
 Você é um revisor técnico. Reescreva a resposta com:
 - Clareza
