@@ -198,7 +198,9 @@ if menu == "Dashboard":
         arquivo.GetContentFile(caminho_temp)
 
         # Carrega CSV com pandas
-        df = pd.read_csv(caminho_temp)
+        df = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
+        df.columns = df.columns.str.strip()
+
 
         usuario_logado = st.session_state.username
         nome_usuario = users[usuario_logado]["name"]
@@ -284,7 +286,8 @@ elif menu == "Meus Follow-ups":
         caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
         arquivo.GetContentFile(caminho_temp)
 
-        df = pd.read_csv(caminho_temp)
+        df = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
+        df.columns = df.columns.str.strip()
 
         usuario_logado = st.session_state.username
         nome_usuario = users[usuario_logado]["name"]
@@ -377,7 +380,8 @@ elif menu == "Meus Follow-ups":
 
             if usuario_logado in admin_users:
                 if st.button("🗑️ Excluir este follow-up"):
-                    df_original = pd.read_csv(caminho_temp)
+                    df = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
+                    df.columns = df.columns.str.strip()
                     df_original = df_original.drop(index=indice_selecionado)
                     df_original.to_csv(caminho_csv, index=False)
 
@@ -437,11 +441,12 @@ elif menu == "Cadastrar Follow-up":
             "Ano": ano,
             "Auditoria": auditoria,
             "Risco": risco,
-            "Plano_de_Acao": plano,
+            "Plano de Acao": plano,
             "Responsavel": responsavel,
+            "Usuário": usuario,
             "E-mail": email,
             "Prazo": prazo.strftime("%Y-%m-%d"),
-            "Data_Conclusao": data_conclusao.strftime("%Y-%m-%d"),
+            "Data de Conclusão": data_conclusao.strftime("%Y-%m-%d"),
             "Status": status,
             "Avaliação FUP": avaliacao,
             "Observação": observacao
@@ -517,7 +522,8 @@ elif menu == "Enviar Evidências":
         arquivo_drive = arquivos_drive[0]
         caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
         arquivo_drive.GetContentFile(caminho_temp)
-        df = pd.read_csv(caminho_temp)
+        df = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
+        df.columns = df.columns.str.strip()
 
         usuario_logado = st.session_state.username
         nome_usuario = users[usuario_logado]["name"]
@@ -711,7 +717,7 @@ elif menu == "🔍 Chatbot FUP":
             return pd.DataFrame()
         caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
         arquivos[0].GetContentFile(caminho_temp)
-        return pd.read_csv(caminho_temp)
+        return pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
 
     df = carregar_followups()
     if df.empty:
