@@ -250,9 +250,9 @@ if menu == "Dashboard":
         st.plotly_chart(fig_auditoria, use_container_width=True)
 
         st.subheader("📅 Follow-ups por Ano")
-        df["Ano"] = df["Ano"].astype(str)
         ano_counts = df["Ano"].value_counts().sort_index().reset_index()
         ano_counts.columns = ["Ano", "Quantidade"]
+        ano_counts["Ano"] = ano_counts["Ano"].astype(str)
         fig_ano = px.line(
             ano_counts,
             x="Ano",
