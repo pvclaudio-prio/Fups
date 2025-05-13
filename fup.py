@@ -127,7 +127,6 @@ def upload_evidencias_para_drive(idx, arquivos, observacao):
         st.error(f"Erro ao enviar evidências para o Drive: {e}")
         return False
         
-@st.cache_data
 def carregar_followups():
     drive = conectar_drive()
     arquivos = drive.ListFile({'q': "title = 'followups.csv' and trashed=false"}).GetList()
