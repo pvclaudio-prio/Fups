@@ -201,7 +201,6 @@ if menu == "Dashboard":
         df = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
         df.columns = df.columns.str.strip()
 
-
         usuario_logado = st.session_state.username
         nome_usuario = users[usuario_logado]["name"]
 
@@ -251,6 +250,7 @@ if menu == "Dashboard":
         st.plotly_chart(fig_auditoria, use_container_width=True)
 
         st.subheader("📅 Follow-ups por Ano")
+        df["Ano"] = df["Ano"].astype(str)
         ano_counts = df["Ano"].value_counts().sort_index().reset_index()
         ano_counts.columns = ["Ano", "Quantidade"]
         fig_ano = px.line(
