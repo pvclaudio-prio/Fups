@@ -820,29 +820,35 @@ elif menu == "🔍 Chatbot FUP":
                 dados_markdown = df.fillna("").astype(str).to_csv(index=False, sep=";")
 
         # 🧠 Prompt para análise
+        # Gera versão textual da base total
+        df_completo_markdown = df.fillna("").astype(str).to_markdown(index=False)
         system_prompt = f"""
-Você é um analista sênior de auditoria interna.
+Você é um analista sênior de auditoria interna com acesso completo aos dados de follow-ups.
 
-Sua tarefa é responder perguntas com base nos follow-ups abaixo.
+Sua tarefa é responder perguntas com base nas duas bases abaixo:
 
-### Instruções:
-- O chat do usuário já foi tratado e as palavras chave serviram de filtro para criar a base de dados dados_markdown.
-- A base de dados completa com todas as informações sem filtros é a df.
-- Leia a pergunta do usuário e identifique os filtros implícitos (ex: status, ambiente, ano, responsavel, etc.).
-- Aplique os filtros mentalmente sobre a base e retorne uma análise direta com os dados relevantes.
-- Resuma se houver muitos registros e faça inferências daquilo que foi filtrado com a base total para o usuário verificar percentuais de participação, etc.
-- Se não encontrar registros, diga "Não há registros compatíveis".
-- Responda com linguagem clara, técnica e profissional.
-- Evite repetições e exageros.
+### Base 1: Base filtrada com base na pergunta do usuário
+Essa base já aplica palavras-chave extraídas do chat e mostra os registros mais relevantes.
+Use-a como foco principal da resposta.
 
-### Bases de dados
-Base de dados já filtrada com base nos chat do usuário:
 {dados_markdown}
 
-Base de dados completa com todas as informações
-{df}
-"""
+### Base 2: Base completa com todos os follow-ups
+Use essa base para comparar e trazer contexto. Gere análises comparativas, como:
+- Proporção do total
+- Distribuição por ano, status, risco
+- Comparação de ocorrências
 
+{df_completo_markdown}
+
+### Instruções para sua resposta:
+- Seja claro, técnico e direto.
+- Aponte se a base filtrada representa uma pequena ou grande parte da base total.
+- Use percentuais e quantidades absolutas.
+- Dê destaque a observações relevantes (ex: “a maioria dos registros filtrados tem risco alto”).
+- Se nada for encontrado, diga: "Não há registros compatíveis".
+- Evite repetições, generalizações e floreios.
+"""
         payload = {
             "model": "gpt-4o",
             "messages": [
