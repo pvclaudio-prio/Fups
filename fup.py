@@ -696,7 +696,8 @@ elif menu == "Visualizar Evidências":
         st.code(traceback.format_exc())
 
 elif menu == "🔍 Chatbot FUP":
-    import re  # ✅ Import necessário para evitar NameError
+    import re
+    import pandas as pd
 
     st.title("🤖 Chatbot FUP com Pergunta Livre")
 
@@ -734,7 +735,6 @@ elif menu == "🔍 Chatbot FUP":
         API_KEY = st.secrets["openai"]["api_key"]
         filtros = {}
 
-        # ✅ Regex estável com import garantido
         if isinstance(prompt_chat, str) and prompt_chat:
             st.write("🔍 Rodando re.search com:", prompt_chat)
 
@@ -764,13 +764,21 @@ elif menu == "🔍 Chatbot FUP":
                     df_filtrado = df_filtrado[df_filtrado[k].str.contains(str(v).lower().strip(), na=False)]
 
             if not df_filtrado.empty:
-                dados_markdown = df_filtrado.fillna("").astype(str).to_markdown(index=False)
+                try:
+                    dados_markdown = df_filtrado.fillna("").astype(str).to_markdown(index=False)
+                except ImportError:
+                    st.warning("⚠️ A biblioteca `tabulate` não está instalada. Instale com `pip install tabulate`.")
+                    dados_markdown = df_filtrado.fillna("").astype(str).to_csv(index=False, sep=";")
             else:
                 dados_markdown = "❌ Nenhum follow-up encontrado com os critérios especificados."
         else:
-            dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
+            try:
+                dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
+            except ImportError:
+                st.warning("⚠️ A biblioteca `tabulate` não está instalada. Instale com `pip install tabulate`.")
+                dados_markdown = df.fillna("").astype(str).to_csv(index=False, sep=";")
 
-        # 🧠 Prompt para o GPT
+        # 🧠 Prompt para análise
         system_prompt = f"""
 Você é um assistente de auditoria interna.
 
