@@ -697,7 +697,7 @@ elif menu == "Visualizar Evidências":
         st.code(traceback.format_exc())
 
 elif menu == "🔍 Chatbot FUP":
-    
+
     st.title("🤖 Chatbot FUP com Pergunta Livre")
 
     @st.cache_data
@@ -722,7 +722,7 @@ elif menu == "🔍 Chatbot FUP":
     enviar = st.button("📨 Enviar")
 
     if enviar:
-        st.write("✅ Chat encaminhado ao agente")
+        st.write("✅ Chat encaminhado ao agente:")
 
         if pergunta and isinstance(pergunta, str):
             prompt_chat = pergunta.strip().lower()
