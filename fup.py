@@ -126,6 +126,36 @@ def upload_evidencias_para_drive(idx, arquivos, observacao):
     except Exception as e:
         st.error(f"Erro ao enviar evidências para o Drive: {e}")
         return False
+        
+@st.cache_data
+def carregar_followups():
+    drive = conectar_drive()
+    arquivos = drive.ListFile({'q': "title = 'followups.csv' and trashed=false"}).GetList()
+
+    colunas = [
+        "Titulo", "Ambiente", "Ano", "Auditoria", "Risco",
+        "Plano de Acao", "Responsavel", "Usuario", "E-mail",
+        "Prazo", "Data de Conclusão", "Status", "Avaliação FUP", "Observação"
+    ]
+
+    if not arquivos:
+        df_vazio = pd.DataFrame(columns=colunas)
+        caminho_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".csv").name
+        df_vazio.to_csv(caminho_temp, sep=";", index=False, encoding="utf-8-sig")
+        novo_arquivo = drive.CreateFile({'title': 'followups.csv'})
+        novo_arquivo.SetContentFile(caminho_temp)
+        novo_arquivo.Upload()
+        return df_vazio
+
+    caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
+    arquivos[0].GetContentFile(caminho_temp)
+
+    try:
+        df = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
+    except UnicodeDecodeError:
+        df = pd.read_csv(caminho_temp, sep=";", encoding="latin1")
+
+    return df
 
 # --- Usuários e autenticação simples ---
 users = {
