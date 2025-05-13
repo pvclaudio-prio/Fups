@@ -542,7 +542,7 @@ elif menu == "Enviar Evidências":
         🔎 **Título:** {linha['Titulo']}  
         📅 **Prazo:** {linha['Prazo']}  
         👤 **Responsável:** {linha['Responsavel']}  
-        📝 **Plano de Ação:** {linha['Plano_de_Acao']}
+        📝 **Plano de Ação:** {linha['Plano de Ação']}
         """)
 
         arquivos = st.file_uploader(
