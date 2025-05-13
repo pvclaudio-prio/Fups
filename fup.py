@@ -722,11 +722,11 @@ elif menu == "🔍 Chatbot FUP":
     enviar = st.button("📨 Enviar")
 
     if enviar:
-        st.write("✅ Chat encaminhado ao agente:")
+        st.write("✅ Botão 'Enviar' pressionado")
 
         if pergunta and isinstance(pergunta, str):
             prompt_chat = pergunta.strip().lower()
-            st.write("✅ Chat recebido:", prompt_chat)
+            st.write("✅ prompt_chat recebido:", prompt_chat)
         else:
             st.error("❌ Nenhuma pergunta válida recebida.")
             st.stop()
