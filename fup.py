@@ -307,7 +307,7 @@ elif menu == "Meus Follow-ups":
 
         if usuario_logado not in admin_users:
             df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
-
+        sr.write(list(df.columns))
         df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
         df["Ano"] = df["Ano"].astype(str)
 
