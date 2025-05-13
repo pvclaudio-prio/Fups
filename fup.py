@@ -705,7 +705,7 @@ elif menu == "Visualizar Evidências":
 
 elif menu == "🔍 Chatbot FUP":
 
-    st.title("🤖 Chatbot FUP com Pergunta Livre")
+    st.title("🤖 Chatbot dos relatórios de auditoria")
 
     @st.cache_data
     def carregar_followups():
@@ -724,7 +724,7 @@ elif menu == "🔍 Chatbot FUP":
         st.warning("Nenhum dado disponível.")
         st.stop()
 
-    st.markdown("### 📝 Digite sua pergunta sobre os follow-ups:")
+    st.markdown("### 📝 Digite sua pergunta sobre os relatórios de auditoria:")
     pergunta = st.text_input("Ex: Quais follow-ups em andamento no ambiente SAP em 2024?", key="pergunta_fup")
     enviar = st.button("📨 Enviar")
 
