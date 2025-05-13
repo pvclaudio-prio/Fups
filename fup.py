@@ -698,11 +698,6 @@ elif menu == "Visualizar Evidências":
 elif menu == "🔍 Chatbot FUP":
     st.title("🤖 Chatbot FUP com Pergunta Livre")
 
-    import requests
-    import re
-    import json
-    import tempfile
-
     @st.cache_data
     def carregar_followups():
         drive = conectar_drive()
