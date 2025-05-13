@@ -715,15 +715,17 @@ elif menu == "🔍 Chatbot FUP":
         st.warning("Nenhum dado disponível.")
         st.stop()
 
-    prompt_chat = st.chat_input("📨 Faça uma pergunta sobre seus follow-ups")
-    resposta_final = "❌ Nenhuma resposta foi gerada."
+    # 🔼 Campo de pergunta no topo da aba
+    st.markdown("### 📝 Digite sua pergunta sobre os follow-ups:")
+    pergunta = st.text_input("Ex: Quais follow-ups em andamento no ambiente SAP em 2024?", key="pergunta_fup")
+    enviar = st.button("📨 Enviar")
 
-    # ✅ Todo o processamento fica aqui dentro
-    if prompt_chat:
-        st.write(f"🤔 Você: {prompt_chat}")
+    if enviar and pergunta.strip():
         API_KEY = st.secrets["openai"]["api_key"]
+        prompt_chat = pergunta.strip()
+        st.markdown(f"**🤔 Sua pergunta:** {prompt_chat}")
 
-        # 🔍 Extração de filtros via regex
+        # 🔍 Extração de filtros com segurança
         match = re.search(r"(ambiente|status|auditoria)\s(.+?)(?:\s|$)", prompt_chat, re.IGNORECASE)
         ano_match = re.search(r"(\d{4})", prompt_chat)
 
@@ -737,7 +739,7 @@ elif menu == "🔍 Chatbot FUP":
         if ano_match:
             filtros["Ano"] = ano_match.group(1)
 
-        # 📊 Aplicar filtros simples
+        # 📊 Aplicação dos filtros
         if filtros:
             df_filtrado = df.copy()
             for col in df_filtrado.select_dtypes(include="object").columns:
@@ -754,11 +756,11 @@ elif menu == "🔍 Chatbot FUP":
         else:
             dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
 
-        # 🧠 Prompt principal
+        # 🧠 Prompt do sistema
         system_prompt = f"""
 Você é um assistente de auditoria interna.
 
-Responda perguntas com base nos follow-ups abaixo, de forma objetiva, sem rodeios.
+Responda perguntas com base nos follow-ups abaixo, de forma clara, concisa e objetiva.
 
 Base de dados:
 {dados_markdown}
@@ -779,6 +781,7 @@ Base de dados:
             "Content-Type": "application/json"
         }
 
+        resposta_final = "❌ Nenhuma resposta gerada."
         response = requests.post(
             "https://api.openai.com/v1/chat/completions",
             headers=headers,
@@ -787,18 +790,18 @@ Base de dados:
         )
 
         if response.status_code == 200:
-            resposta_parte = response.json()["choices"][0]["message"]["content"]
-            resposta_final = resposta_parte
+            resposta_final = response.json()["choices"][0]["message"]["content"]
         else:
             resposta_final = f"Erro na API: {response.status_code} - {response.text}"
 
-        # 🧹 Revisor para clareza e padrão
+        # 🔁 Revisor de resposta
         revisor_prompt = f"""
-Você é um revisor técnico. Reescreva a resposta com:
-- Clareza
-- Estrutura direta
-- Sem repetições
-- Correção gramatical
+Você é um revisor técnico de auditoria.
+
+Corrija a resposta abaixo garantindo:
+- Clareza e objetividade
+- Gramática e estrutura padrão
+- Sem repetições ou termos vagos
 
 Base de dados de referência:
 {dados_markdown}
@@ -826,5 +829,6 @@ Base de dados de referência:
         else:
             resposta_final = f"(Erro ao revisar resposta: {response_revisor.status_code})\n\n{resposta_final}"
 
-        with st.chat_message("assistant"):
-            st.write(resposta_final)
+        # 💬 Exibir a resposta final
+        st.markdown("### 💬 Resposta do Assistente")
+        st.write(resposta_final)
