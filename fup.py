@@ -285,6 +285,7 @@ elif menu == "Meus Follow-ups":
         arquivo.GetContentFile(caminho_temp)
 
         df = pd.read_csv(caminho_temp)
+        st.write("🧾 Colunas disponíveis:", df.columns.tolist())
 
         usuario_logado = st.session_state.username
         nome_usuario = users[usuario_logado]["name"]
