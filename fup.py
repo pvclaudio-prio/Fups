@@ -165,15 +165,30 @@ if st.sidebar.button("Logout"):
     st.rerun()
 
 # --- Menu lateral ---
-st.sidebar.title("📋 Menu")
-menu = st.sidebar.radio("Navegar para:", [
-    "Dashboard",
-    "Meus Follow-ups",
-    "Cadastrar Follow-up",
-    "Enviar Evidências",
-    "Visualizar Evidências",
-    "🔍 Chatbot FUP"
-])
+st.subheader("📅 Follow-ups por Ano")
+
+# Garantir que "Ano" está como inteiro
+df["Ano"] = df["Ano"].astype(int)
+
+# Agrupar e contar por ano
+ano_counts = df["Ano"].value_counts().sort_index().reset_index()
+ano_counts.columns = ["Ano", "Quantidade"]
+
+# Converter para string apenas se quiser eixo categórico
+# ano_counts["Ano"] = ano_counts["Ano"].astype(str)
+
+fig_ano = px.line(
+    ano_counts,
+    x="Ano",
+    y="Quantidade",
+    markers=True,
+    title="Evolução de Follow-ups por Ano"
+)
+
+# ✅ Formatando eixo X para não exibir decimais
+fig_ano.update_layout(xaxis=dict(tickformat=".0f"))
+
+st.plotly_chart(fig_ano, use_container_width=True)
 
 # --- Conteúdo das páginas ---
 
