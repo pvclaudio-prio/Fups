@@ -352,7 +352,7 @@ elif menu == "Meus Follow-ups":
 
             valor_atual = linha[coluna_escolhida]
 
-            if coluna_escolhida in ["Prazo", "Data_Conclusao"]:
+            if coluna_escolhida in ["Prazo", "Data de Conclusão"]:
                 try:
                     data_inicial = pd.to_datetime(valor_atual).date()
                 except:
