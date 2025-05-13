@@ -735,10 +735,11 @@ elif menu == "🔍 Chatbot FUP":
         API_KEY = st.secrets["openai"]["api_key"]
         filtros = {}
 
+        # ✅ Regex ajustada para capturar frases compostas
         if isinstance(prompt_chat, str) and prompt_chat:
             st.write("🔍 Rodando re.search com:", prompt_chat)
 
-            match = re.search(r"(ambiente|status|auditoria)\s+(.+?)", prompt_chat, re.IGNORECASE)
+            match = re.search(r"(ambiente|status|auditoria)\s+([\w\s\-]+)", prompt_chat, re.IGNORECASE)
             ano_match = re.search(r"(\d{4})", prompt_chat)
 
             if match:
@@ -816,7 +817,7 @@ Base de dados:
         else:
             resposta_final = f"Erro na API: {response.status_code} - {response.text}"
 
-        # 🔁 Revisor GPT
+        # 🔁 Revisor
         revisor_prompt = f"""
 Você é um revisor técnico. Reescreva a resposta com:
 - Clareza
