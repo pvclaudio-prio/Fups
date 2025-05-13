@@ -300,7 +300,7 @@ elif menu == "Meus Follow-ups":
 
     try:
         df = carregar_followups()
-        st.DataFrame(df)
+        st.dataframe(df, use_container_width=True)
         df.columns = df.columns.str.strip()
 
         usuario_logado = st.session_state.username
