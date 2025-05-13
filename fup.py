@@ -715,7 +715,7 @@ elif menu == "🔍 Chatbot FUP":
         st.warning("Nenhum dado disponível.")
         st.stop()
 
-    # 🔼 Campo de pergunta no topo da aba
+    # 🔼 Campo de entrada no topo
     st.markdown("### 📝 Digite sua pergunta sobre os follow-ups:")
     pergunta = st.text_input("Ex: Quais follow-ups em andamento no ambiente SAP em 2024?", key="pergunta_fup")
     enviar = st.button("📨 Enviar")
@@ -725,19 +725,21 @@ elif menu == "🔍 Chatbot FUP":
         prompt_chat = pergunta.strip()
         st.markdown(f"**🤔 Sua pergunta:** {prompt_chat}")
 
-        # 🔍 Extração de filtros com segurança
-        match = re.search(r"(ambiente|status|auditoria)\s(.+?)(?:\s|$)", prompt_chat, re.IGNORECASE)
-        ano_match = re.search(r"(\d{4})", prompt_chat)
-
         filtros = {}
-        if match:
-            campo = match.group(1).strip().capitalize()
-            valor = match.group(2).strip()
-            if campo in df.columns:
-                filtros[campo] = valor
 
-        if ano_match:
-            filtros["Ano"] = ano_match.group(1)
+        # ✅ Proteção extra: só executa regex se prompt_chat for string válida
+        if isinstance(prompt_chat, str) and prompt_chat:
+            match = re.search(r"(ambiente|status|auditoria)\s(.+?)(?:\s|$)", prompt_chat, re.IGNORECASE)
+            ano_match = re.search(r"(\d{4})", prompt_chat)
+
+            if match:
+                campo = match.group(1).strip().capitalize()
+                valor = match.group(2).strip()
+                if campo in df.columns:
+                    filtros[campo] = valor
+
+            if ano_match:
+                filtros["Ano"] = ano_match.group(1)
 
         # 📊 Aplicação dos filtros
         if filtros:
@@ -756,11 +758,11 @@ elif menu == "🔍 Chatbot FUP":
         else:
             dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
 
-        # 🧠 Prompt do sistema
+        # 🧠 Prompt para análise
         system_prompt = f"""
 Você é um assistente de auditoria interna.
 
-Responda perguntas com base nos follow-ups abaixo, de forma clara, concisa e objetiva.
+Sua tarefa é responder perguntas com base nos follow-ups abaixo de forma objetiva, clara e profissional.
 
 Base de dados:
 {dados_markdown}
@@ -786,7 +788,7 @@ Base de dados:
             "https://api.openai.com/v1/chat/completions",
             headers=headers,
             json=payload,
-            verify=False
+            verify=False  # SSL desativado
         )
 
         if response.status_code == 200:
@@ -794,16 +796,15 @@ Base de dados:
         else:
             resposta_final = f"Erro na API: {response.status_code} - {response.text}"
 
-        # 🔁 Revisor de resposta
+        # 🔁 Revisor
         revisor_prompt = f"""
-Você é um revisor técnico de auditoria.
-
-Corrija a resposta abaixo garantindo:
+Você é um revisor técnico. Reescreva a resposta com:
 - Clareza e objetividade
-- Gramática e estrutura padrão
-- Sem repetições ou termos vagos
+- Correção gramatical
+- Estrutura clara e concisa
+- Sem repetições
 
-Base de dados de referência:
+Base de dados:
 {dados_markdown}
 """
 
@@ -829,6 +830,6 @@ Base de dados de referência:
         else:
             resposta_final = f"(Erro ao revisar resposta: {response_revisor.status_code})\n\n{resposta_final}"
 
-        # 💬 Exibir a resposta final
+        # 💬 Resposta final ao usuário
         st.markdown("### 💬 Resposta do Assistente")
         st.write(resposta_final)
