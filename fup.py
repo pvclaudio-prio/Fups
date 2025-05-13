@@ -833,8 +833,11 @@ Sua tarefa é responder perguntas com base nos follow-ups abaixo.
 - Responda com linguagem clara, técnica e profissional.
 - Evite repetições e exageros.
 
-Base de dados:
+Base de dados já filtrada com base nos chat do usuário:
 {dados_markdown}
+
+Base de dados completa com todas as informações
+{df}
 """
 
         payload = {
