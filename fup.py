@@ -718,7 +718,7 @@ elif menu == "🔍 Chatbot FUP":
         st.warning("Nenhum dado disponível.")
         st.stop()
 
-    st.markdown("### 📝 Digite sua pergunta sobre os follow-ups:")
+    st.markdown("### 📝 Digite sua pergunta sobre os relatórios de auditoria:")
     pergunta = st.text_input("Ex: Quais follow-ups em andamento no ambiente SAP em 2024?", key="pergunta_fup")
     enviar = st.button("📨 Enviar")
 
