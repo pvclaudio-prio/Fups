@@ -725,7 +725,6 @@ elif menu == "🔍 Chatbot FUP":
 
     st.title("🤖 Chatbot dos relatórios de auditoria")
 
-    @st.cache_data
     def carregar_followups():
         drive = conectar_drive()
         arquivos = drive.ListFile({
