@@ -697,7 +697,12 @@ elif menu == "Visualizar Evidências":
 
 elif menu == "🔍 Chatbot FUP":
     st.title("🤖 Chatbot FUP com Pergunta Livre")
-    
+
+    import requests
+    import re
+    import json
+    import tempfile
+
     @st.cache_data
     def carregar_followups():
         drive = conectar_drive()
@@ -735,6 +740,7 @@ elif menu == "🔍 Chatbot FUP":
         if isinstance(prompt_chat, str) and prompt_chat:
             st.write("🔍 Rodando re.search com:", prompt_chat)
 
+            # ✅ Regex com r"" para evitar erro
             match = re.search(r"(ambiente|status|auditoria)\s(.+?)(?:\s|$)", prompt_chat, re.IGNORECASE)
             ano_match = re.search(r"(\d{4})", prompt_chat)
 
