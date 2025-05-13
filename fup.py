@@ -720,13 +720,13 @@ elif menu == "🔍 Chatbot FUP":
     enviar = st.button("📨 Enviar")
 
     if enviar and pergunta.strip():
-        API_KEY = st.secrets["openai"]["api_key"]
         prompt_chat = pergunta.strip()
         st.markdown(f"**🤔 Sua pergunta:** {prompt_chat}")
 
+        API_KEY = st.secrets["openai"]["api_key"]
         filtros = {}
 
-        # ✅ Proteção: só usa regex se prompt_chat for string válida
+        # ✅ Proteção total antes de regex
         if isinstance(prompt_chat, str) and prompt_chat:
             match = re.search(r"(ambiente|status|auditoria)\s(.+?)(?:\s|$)", prompt_chat, re.IGNORECASE)
             ano_match = re.search(r"(\d{4})", prompt_chat)
@@ -761,7 +761,7 @@ elif menu == "🔍 Chatbot FUP":
         system_prompt = f"""
 Você é um assistente de auditoria interna.
 
-Sua tarefa é responder perguntas com base nos follow-ups abaixo, de forma objetiva, clara e profissional.
+Sua tarefa é responder perguntas com base nos follow-ups abaixo, de forma clara, objetiva e profissional.
 
 Base de dados:
 {dados_markdown}
@@ -787,7 +787,7 @@ Base de dados:
             "https://api.openai.com/v1/chat/completions",
             headers=headers,
             json=payload,
-            verify=False  # SSL desativado
+            verify=False
         )
 
         if response.status_code == 200:
@@ -798,10 +798,10 @@ Base de dados:
         # 🔁 Revisor
         revisor_prompt = f"""
 Você é um revisor técnico. Reescreva a resposta com:
-- Clareza e objetividade
+- Clareza
+- Estrutura objetiva
 - Correção gramatical
-- Estrutura direta e profissional
-- Sem repetições
+- Sem repetições ou linguagem vaga
 
 Base de dados:
 {dados_markdown}
