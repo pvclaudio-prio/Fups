@@ -735,19 +735,34 @@ elif menu == "🔍 Chatbot FUP":
         API_KEY = st.secrets["openai"]["api_key"]
         filtros = {}
 
-        # ✅ Regex ajustada para capturar frases compostas
         if isinstance(prompt_chat, str) and prompt_chat:
-            st.write("🔍 Rodando re.search com:", prompt_chat)
+            st.write("🔍 Analisando onde aplicar o filtro...")
 
-            match = re.search(r"(ambiente|status|auditoria)\s+([\w\s\-]+)", prompt_chat, re.IGNORECASE)
+            # Extrai o valor relevante da frase
+            match = re.search(r"(?:status|ambiente|auditoria)?\s*([\w\s\-]+)", prompt_chat, re.IGNORECASE)
             ano_match = re.search(r"(\d{4})", prompt_chat)
 
+            coluna_encontrada = None
+            valor_extraido = None
+
             if match:
-                campo = match.group(1).strip().capitalize()
-                valor = match.group(2).strip()
-                st.write(f"🔎 Filtro extraído do regex: {campo} = {valor}")
-                if campo in df.columns:
-                    filtros[campo] = valor
+                valor_extraido = match.group(1).strip().lower()
+                st.write(f"🔎 Valor extraído: {valor_extraido}")
+
+                # Busca qual coluna textual contém mais ocorrências do valor
+                candidatos = []
+                for col in df.select_dtypes(include="object").columns:
+                    conteudo = df[col].astype(str).str.lower().str.strip()
+                    contagem = conteudo.str.contains(valor_extraido, na=False).sum()
+                    if contagem > 0:
+                        candidatos.append((col, contagem))
+
+                if candidatos:
+                    coluna_encontrada = sorted(candidatos, key=lambda x: x[1], reverse=True)[0][0]
+                    st.write(f"📌 Coluna com maior correspondência: {coluna_encontrada}")
+                    filtros[coluna_encontrada] = valor_extraido
+                else:
+                    st.warning("⚠️ Nenhuma coluna textual contém esse valor.")
 
             if ano_match:
                 filtros["Ano"] = ano_match.group(1)
@@ -817,7 +832,7 @@ Base de dados:
         else:
             resposta_final = f"Erro na API: {response.status_code} - {response.text}"
 
-        # 🔁 Revisor
+        # 🔁 Revisor GPT
         revisor_prompt = f"""
 Você é um revisor técnico. Reescreva a resposta com:
 - Clareza
