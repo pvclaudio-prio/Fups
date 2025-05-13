@@ -442,7 +442,7 @@ elif menu == "Cadastrar Follow-up":
             "Risco": risco,
             "Plano de Acao": plano,
             "Responsavel": responsavel,
-            "Usuário": usuario,
+            "Usuario": usuario,
             "E-mail": email,
             "Prazo": prazo.strftime("%Y-%m-%d"),
             "Data de Conclusão": data_conclusao.strftime("%Y-%m-%d"),
@@ -462,7 +462,7 @@ elif menu == "Cadastrar Follow-up":
                 arquivo = arquivos[0]
                 caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
                 arquivo.GetContentFile(caminho_temp)
-                df = pd.read_csv(caminho_temp)
+                df = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
             else:
                 df = pd.DataFrame()
                 arquivo = drive.CreateFile({'title': 'followups.csv'})
