@@ -697,7 +697,7 @@ elif menu == "Visualizar Evidências":
 
 elif menu == "🔍 Chatbot FUP":
     st.title("🤖 Chatbot FUP com Pergunta Livre")
-
+    
     @st.cache_data
     def carregar_followups():
         drive = conectar_drive()
@@ -719,26 +719,35 @@ elif menu == "🔍 Chatbot FUP":
     pergunta = st.text_input("Ex: Quais follow-ups em andamento no ambiente SAP em 2024?", key="pergunta_fup")
     enviar = st.button("📨 Enviar")
 
-    if enviar and pergunta.strip():
-        prompt_chat = pergunta.strip()
-        st.markdown(f"**🤔 Sua pergunta:** {prompt_chat}")
+    if enviar:
+        st.write("✅ Botão 'Enviar' pressionado")
+
+        if pergunta and isinstance(pergunta, str):
+            prompt_chat = pergunta.strip()
+            st.write("✅ prompt_chat recebido:", prompt_chat)
+        else:
+            st.error("❌ Nenhuma pergunta válida recebida.")
+            st.stop()
 
         API_KEY = st.secrets["openai"]["api_key"]
         filtros = {}
 
-        # ✅ Proteção total antes de regex
         if isinstance(prompt_chat, str) and prompt_chat:
+            st.write("🔍 Rodando re.search com:", prompt_chat)
+
             match = re.search(r"(ambiente|status|auditoria)\s(.+?)(?:\s|$)", prompt_chat, re.IGNORECASE)
             ano_match = re.search(r"(\d{4})", prompt_chat)
 
             if match:
                 campo = match.group(1).strip().capitalize()
                 valor = match.group(2).strip()
+                st.write(f"🔎 Filtro extraído do regex: {campo} = {valor}")
                 if campo in df.columns:
                     filtros[campo] = valor
 
             if ano_match:
                 filtros["Ano"] = ano_match.group(1)
+                st.write("📅 Ano identificado:", filtros["Ano"])
 
         # 📊 Aplicar filtros
         if filtros:
@@ -801,7 +810,7 @@ Você é um revisor técnico. Reescreva a resposta com:
 - Clareza
 - Estrutura objetiva
 - Correção gramatical
-- Sem repetições ou linguagem vaga
+- Sem repetições
 
 Base de dados:
 {dados_markdown}
