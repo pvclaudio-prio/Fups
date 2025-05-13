@@ -165,30 +165,15 @@ if st.sidebar.button("Logout"):
     st.rerun()
 
 # --- Menu lateral ---
-st.subheader("📅 Follow-ups por Ano")
-
-# Garantir que "Ano" está como inteiro
-df["Ano"] = df["Ano"].astype(int)
-
-# Agrupar e contar por ano
-ano_counts = df["Ano"].value_counts().sort_index().reset_index()
-ano_counts.columns = ["Ano", "Quantidade"]
-
-# Converter para string apenas se quiser eixo categórico
-# ano_counts["Ano"] = ano_counts["Ano"].astype(str)
-
-fig_ano = px.line(
-    ano_counts,
-    x="Ano",
-    y="Quantidade",
-    markers=True,
-    title="Evolução de Follow-ups por Ano"
-)
-
-# ✅ Formatando eixo X para não exibir decimais
-fig_ano.update_layout(xaxis=dict(tickformat=".0f"))
-
-st.plotly_chart(fig_ano, use_container_width=True)
+st.sidebar.title("📋 Menu")
+menu = st.sidebar.radio("Navegar para:", [
+    "Dashboard",
+    "Meus Follow-ups",
+    "Cadastrar Follow-up",
+    "Enviar Evidências",
+    "Visualizar Evidências",
+    "🔍 Chatbot FUP"
+])
 
 # --- Conteúdo das páginas ---
 
@@ -196,8 +181,10 @@ if menu == "Dashboard":
     st.title("📊 Painel de KPIs")
 
     try:
+        # Conecta ao Google Drive
         drive = conectar_drive()
 
+        # Procura arquivo chamado 'followups.csv'
         arquivos = drive.ListFile({
             'q': "title = 'followups.csv' and trashed=false"
         }).GetList()
@@ -210,13 +197,10 @@ if menu == "Dashboard":
         caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
         arquivo.GetContentFile(caminho_temp)
 
-        # Leitura segura com fallback
-        try:
-            df = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
-        except UnicodeDecodeError:
-            df = pd.read_csv(caminho_temp, sep=";", encoding="latin1")
-
+        # Carrega CSV com pandas
+        df = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
         df.columns = df.columns.str.strip()
+
 
         usuario_logado = st.session_state.username
         nome_usuario = users[usuario_logado]["name"]
@@ -228,8 +212,8 @@ if menu == "Dashboard":
             st.info("Nenhum dado disponível para exibir KPIs.")
             st.stop()
 
-        df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
-        df["Ano"] = df["Ano"].astype(int)
+        df["Prazo"] = pd.to_datetime(df["Prazo"])
+        df["Ano"] = df["Ano"].astype(str)
         df["Status"] = df["Status"].fillna("Não informado")
 
         # --- KPIs principais ---
@@ -245,7 +229,7 @@ if menu == "Dashboard":
         col3.metric("Pendentes", pendentes)
         col4.metric("Conclusão (%)", f"{taxa_conclusao}%")
 
-        # --- Gráfico por Status ---
+        # --- Gráficos ---
         st.subheader("📌 Distribuição por Status")
         fig_status = px.pie(
             df,
@@ -255,7 +239,6 @@ if menu == "Dashboard":
         )
         st.plotly_chart(fig_status, use_container_width=True)
 
-        # --- Gráfico por Auditoria ---
         st.subheader("📁 Follow-ups por Auditoria")
         auditoria_counts = df["Auditoria"].value_counts().reset_index()
         auditoria_counts.columns = ["Auditoria", "Quantidade"]
@@ -267,11 +250,9 @@ if menu == "Dashboard":
         )
         st.plotly_chart(fig_auditoria, use_container_width=True)
 
-        # --- Gráfico por Ano ---
         st.subheader("📅 Follow-ups por Ano")
         ano_counts = df["Ano"].value_counts().sort_index().reset_index()
         ano_counts.columns = ["Ano", "Quantidade"]
-
         fig_ano = px.line(
             ano_counts,
             x="Ano",
@@ -279,8 +260,6 @@ if menu == "Dashboard":
             markers=True,
             title="Evolução de Follow-ups por Ano"
         )
-        fig_ano.update_layout(xaxis=dict(tickformat=".0f"))
-
         st.plotly_chart(fig_ano, use_container_width=True)
 
     except Exception as e:
