@@ -698,11 +698,6 @@ elif menu == "Visualizar Evidências":
 elif menu == "🔍 Chatbot FUP":
     st.title("🤖 Chatbot FUP com Pergunta Livre")
 
-    import requests
-    import re
-    import json
-    import tempfile
-
     @st.cache_data
     def carregar_followups():
         drive = conectar_drive()
@@ -763,6 +758,7 @@ elif menu == "🔍 Chatbot FUP":
 
             for k, v in filtros.items():
                 if k in df_filtrado.columns:
+                    df_filtrado[k] = df_filtrado[k].astype(str)
                     df_filtrado = df_filtrado[df_filtrado[k].str.contains(str(v).lower().strip(), na=False)]
 
             if not df_filtrado.empty:
