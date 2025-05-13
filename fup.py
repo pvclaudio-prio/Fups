@@ -469,7 +469,7 @@ elif menu == "Cadastrar Follow-up":
 
             # Atualiza e salva
             df = pd.concat([df, pd.DataFrame([novo])], ignore_index=True)
-            df.to_csv(caminho_csv, index=False)
+            df.to_csv(caminho_csv, sep=";", index=False, encoding="utf-8-sig")
 
             arquivo.SetContentFile(caminho_csv)
             arquivo.Upload()
