@@ -698,6 +698,11 @@ elif menu == "Visualizar Evidências":
 elif menu == "🔍 Chatbot FUP":
     st.title("🤖 Chatbot FUP com Pergunta Livre")
 
+    import requests
+    import re
+    import json
+    import tempfile
+
     @st.cache_data
     def carregar_followups():
         drive = conectar_drive()
@@ -718,7 +723,7 @@ elif menu == "🔍 Chatbot FUP":
     prompt_chat = st.chat_input("📨 Faça uma pergunta sobre seus follow-ups")
     resposta_final = "❌ Nenhuma resposta foi gerada."
 
-    # ✅ Protege todo o código dentro de if prompt_chat:
+    # ✅ Todo o processamento fica aqui dentro
     if prompt_chat:
         st.write(f"🤔 Você: {prompt_chat}")
         API_KEY = st.secrets["openai"]["api_key"]
@@ -754,13 +759,11 @@ elif menu == "🔍 Chatbot FUP":
         else:
             dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
 
-        # 🎯 Prompt principal
+        # 🧠 Prompt principal
         system_prompt = f"""
 Você é um assistente de auditoria interna.
 
-Sua tarefa é responder perguntas sobre follow-ups com base nos dados abaixo.
-
-Responda de forma objetiva, clara e concisa.
+Responda perguntas com base nos follow-ups abaixo, de forma objetiva, sem rodeios.
 
 Base de dados:
 {dados_markdown}
@@ -785,7 +788,7 @@ Base de dados:
             "https://api.openai.com/v1/chat/completions",
             headers=headers,
             json=payload,
-            verify=False  # SSL desativado
+            verify=False
         )
 
         if response.status_code == 200:
@@ -794,15 +797,15 @@ Base de dados:
         else:
             resposta_final = f"Erro na API: {response.status_code} - {response.text}"
 
-        # ✨ Revisor da resposta
+        # 🧹 Revisor para clareza e padrão
         revisor_prompt = f"""
-Você é um revisor técnico. Reescreva a resposta abaixo com:
+Você é um revisor técnico. Reescreva a resposta com:
 - Clareza
-- Estrutura objetiva
+- Estrutura direta
 - Sem repetições
 - Correção gramatical
 
-Base de dados:
+Base de dados de referência:
 {dados_markdown}
 """
 
