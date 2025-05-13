@@ -732,11 +732,11 @@ elif menu == "🔍 Chatbot FUP":
         API_KEY = st.secrets["openai"]["api_key"]
         filtros = {}
 
-        # ✅ Regex 100% correta
+        # ✅ Regex correta e segura
         if isinstance(prompt_chat, str) and prompt_chat:
             st.write("🔍 Rodando re.search com:", prompt_chat)
 
-            match = re.search(r"(ambiente|status|auditoria)\s+([^\d\n]+)", prompt_chat, re.IGNORECASE)
+            match = re.search(r"(ambiente|status|auditoria)\s+(.+?)", prompt_chat, re.IGNORECASE)
             ano_match = re.search(r"(\d{4})", prompt_chat)
 
             if match:
@@ -768,7 +768,7 @@ elif menu == "🔍 Chatbot FUP":
         else:
             dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
 
-        # 🧠 Prompt para o agente
+        # 🧠 Prompt para o GPT
         system_prompt = f"""
 Você é um assistente de auditoria interna.
 
@@ -806,7 +806,7 @@ Base de dados:
         else:
             resposta_final = f"Erro na API: {response.status_code} - {response.text}"
 
-        # 🔁 Revisor
+        # 🔁 Revisor GPT
         revisor_prompt = f"""
 Você é um revisor técnico. Reescreva a resposta com:
 - Clareza
@@ -840,7 +840,7 @@ Base de dados:
         else:
             resposta_final = f"(Erro ao revisar resposta: {response_revisor.status_code})\n\n{resposta_final}"
 
-        # 💬 Exibir resposta e base filtrada
+        # 💬 Exibir resposta e tabela
         st.markdown("### 💬 Resposta do Assistente")
         st.write(resposta_final)
 
