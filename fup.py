@@ -22,6 +22,7 @@ from openai import OpenAI
 import json
 import requests
 import tempfile
+from difflib import get_close_matches
 
 st.set_page_config(layout = 'wide')
 
@@ -696,9 +697,6 @@ elif menu == "Visualizar Evidências":
         st.code(traceback.format_exc())
 
 elif menu == "🔍 Chatbot FUP":
-    import re
-    import pandas as pd
-    from difflib import get_close_matches
 
     st.title("🤖 Chatbot FUP com Pergunta Livre")
 
@@ -728,7 +726,7 @@ elif menu == "🔍 Chatbot FUP":
 
         if pergunta and isinstance(pergunta, str):
             prompt_chat = pergunta.strip().lower()
-            st.write("✅ prompt_chat recebido:", prompt_chat)
+            st.write("✅ chat recebido:", prompt_chat)
         else:
             st.error("❌ Nenhuma pergunta válida recebida.")
             st.stop()
@@ -736,7 +734,7 @@ elif menu == "🔍 Chatbot FUP":
         API_KEY = st.secrets["openai"]["api_key"]
         filtros = {}
 
-        st.write("🔍 Analisando valores semelhantes nas colunas...")
+        #st.write("🔍 Analisando valores semelhantes nas colunas...")
 
         # Pré-processa valores únicos das colunas textuais
         valores_unicos = {}
@@ -761,7 +759,7 @@ elif menu == "🔍 Chatbot FUP":
 
         if melhor_match and melhor_coluna:
             filtros[melhor_coluna] = melhor_match
-            st.write(f"📌 Valor interpretado: `{melhor_match}` na coluna `{melhor_coluna}`")
+            #st.write(f"📌 Valor interpretado: `{melhor_match}` na coluna `{melhor_coluna}`")
         else:
             st.warning("⚠️ Nenhuma coluna textual contém esse valor.")
 
@@ -769,7 +767,7 @@ elif menu == "🔍 Chatbot FUP":
         ano_match = re.search(r"(\d{4})", prompt_chat)
         if ano_match:
             filtros["Ano"] = ano_match.group(1)
-            st.write("📅 Ano identificado:", filtros["Ano"])
+            #st.write("📅 Ano identificado:", filtros["Ano"])
 
         # 📊 Aplicar filtros
         if filtros:
