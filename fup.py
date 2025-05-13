@@ -749,39 +749,84 @@ elif menu == "🔍 Chatbot FUP":
         st.write("✅ Chat encaminhado para o agente!")
 
         if pergunta and isinstance(pergunta, str):
-            prompt_chat = pergunta.strip()
+            prompt_chat = pergunta.strip().lower()
             st.write("✅ Chat recebido:", prompt_chat)
         else:
             st.error("❌ Nenhuma pergunta válida recebida.")
             st.stop()
 
         API_KEY = st.secrets["openai"]["api_key"]
+        filtros = {}
 
-        try:
-            dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
-        except ImportError:
-            st.warning("⚠️ Instale `tabulate` para melhor formatação: `pip install tabulate`")
-            dados_markdown = df.fillna("").astype(str).to_csv(index=False, sep=";")
+        st.write("🔍 Analisando valores semelhantes nas colunas...")
 
-        # 🧠 Prompt completo para análise
+        # Pré-processa valores únicos das colunas textuais
+        valores_unicos = {}
+        for col in df.select_dtypes(include="object").columns:
+            valores_unicos[col] = df[col].astype(str).str.lower().str.strip().unique().tolist()
+
+        # Tokeniza o prompt
+        tokens = re.findall(r"\w+", prompt_chat)
+
+        melhor_match = None
+        melhor_coluna = None
+
+        for token in tokens:
+            for col, valores in valores_unicos.items():
+                match = get_close_matches(token, valores, n=1, cutoff=0.8)
+                if match:
+                    melhor_match = match[0]
+                    melhor_coluna = col
+                    break
+            if melhor_match:
+                break
+
+        if melhor_match and melhor_coluna:
+            filtros[melhor_coluna] = melhor_match
+            st.write(f"📌 Valor interpretado: `{melhor_match}` na coluna `{melhor_coluna}`")
+        else:
+            st.warning("⚠️ Nenhuma coluna textual contém esse valor.")
+
+        # Extrair ano
+        ano_match = re.search(r"(\d{4})", prompt_chat)
+        if ano_match:
+            filtros["Ano"] = ano_match.group(1)
+            st.write("📅 Ano identificado:", filtros["Ano"])
+
+        # 📊 Aplicar filtros
+        if filtros:
+            df_filtrado = df.copy()
+            for col in df_filtrado.select_dtypes(include="object").columns:
+                df_filtrado[col] = df_filtrado[col].astype(str).str.lower().str.strip()
+
+            for k, v in filtros.items():
+                if k in df_filtrado.columns:
+                    df_filtrado[k] = df_filtrado[k].astype(str)
+                    df_filtrado = df_filtrado[df_filtrado[k].str.contains(str(v).lower().strip(), na=False)]
+
+            if not df_filtrado.empty:
+                try:
+                    dados_markdown = df_filtrado.fillna("").astype(str).to_markdown(index=False)
+                except ImportError:
+                    st.warning("⚠️ Instale `tabulate` para melhor formatação: `pip install tabulate`")
+                    dados_markdown = df_filtrado.fillna("").astype(str).to_csv(index=False, sep=";")
+            else:
+                dados_markdown = "❌ Nenhum follow-up encontrado com os critérios especificados."
+        else:
+            try:
+                dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
+            except ImportError:
+                st.warning("⚠️ Instale `tabulate` para melhor formatação: `pip install tabulate`")
+                dados_markdown = df.fillna("").astype(str).to_csv(index=False, sep=";")
+
+        # 🧠 Prompt para análise
         system_prompt = f"""
-Você é um analista sênior de auditoria interna.
+Você é um especialista de auditoria interna.
 
-Sua tarefa é responder perguntas com base nos follow-ups abaixo.
+Sua tarefa é responder perguntas com base nos follow-ups abaixo, de forma clara, objetiva e profissional.
 
-### Instruções:
-- Leia a pergunta do usuário e identifique os filtros implícitos (ex: status, ambiente, ano, responsável, etc.).
-- Aplique os filtros mentalmente sobre a base e retorne uma análise direta com os dados relevantes.
-- Resuma se houver muitos registros.
-- Se não encontrar registros, diga "Não há registros compatíveis".
-- Responda com linguagem clara, técnica e profissional.
-- Evite repetições e exageros.
-
-### Base de dados:
+Base de dados:
 {dados_markdown}
-
-### Pergunta do usuário:
-{prompt_chat}
 """
 
         payload = {
@@ -791,7 +836,7 @@ Sua tarefa é responder perguntas com base nos follow-ups abaixo.
                 {"role": "user", "content": prompt_chat}
             ],
             "temperature": 0.2,
-            "max_tokens": 700
+            "max_tokens": 500
         }
 
         headers = {
@@ -812,8 +857,46 @@ Sua tarefa é responder perguntas com base nos follow-ups abaixo.
         else:
             resposta_final = f"Erro na API: {response.status_code} - {response.text}"
 
+        # 🔁 Revisor
+        revisor_prompt = f"""
+Você é um revisor técnico. Reescreva a resposta com:
+- Clareza
+- Estrutura objetiva
+- Correção gramatical
+- Sem repetições
+
+Base de dados:
+{dados_markdown}
+"""
+
+        payload_revisor = {
+            "model": "gpt-4o",
+            "messages": [
+                {"role": "system", "content": revisor_prompt},
+                {"role": "user", "content": resposta_final}
+            ],
+            "temperature": 0.2,
+            "max_tokens": 500
+        }
+
+        response_revisor = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=payload_revisor,
+            verify=False
+        )
+
+        if response_revisor.status_code == 200:
+            resposta_final = response_revisor.json()["choices"][0]["message"]["content"]
+        else:
+            resposta_final = f"(Erro ao revisar resposta: {response_revisor.status_code})\n\n{resposta_final}"
+
+        # 💬 Exibir resposta e base
         st.markdown("### 💬 Resposta do Assistente")
         st.write(resposta_final)
 
-        st.markdown("### 📋 Base de dados consultada:")
-        st.dataframe(df, use_container_width=True)
+        st.markdown("### 📋 Follow-ups encontrados:")
+        if 'df_filtrado' in locals() and not df_filtrado.empty:
+            st.dataframe(df_filtrado, use_container_width=True)
+        else:
+            st.info("Nenhum follow-up encontrado com os critérios aplicados.")
