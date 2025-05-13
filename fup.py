@@ -269,23 +269,7 @@ elif menu == "Meus Follow-ups":
     st.info("Esta seção exibirá os follow-ups atribuídos a você.")
 
     try:
-        # Conecta ao Google Drive
-        drive = conectar_drive()
-
-        # Procura arquivo chamado 'followups.csv'
-        arquivos = drive.ListFile({
-            'q': "title = 'followups.csv' and trashed=false"
-        }).GetList()
-
-        if not arquivos:
-            st.warning("Arquivo followups.csv não encontrado no Google Drive.")
-            st.stop()
-
-        arquivo = arquivos[0]
-        caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
-        arquivo.GetContentFile(caminho_temp)
-
-        df = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
+        df = carregar_followups()
         df.columns = df.columns.str.strip()
 
         usuario_logado = st.session_state.username
@@ -294,7 +278,7 @@ elif menu == "Meus Follow-ups":
         if usuario_logado not in admin_users:
             df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
 
-        df["Prazo"] = pd.to_datetime(df["Prazo"])
+        df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
         df["Ano"] = df["Ano"].astype(str)
 
         # --- Filtros na sidebar ---
@@ -363,13 +347,17 @@ elif menu == "Meus Follow-ups":
                 novo_valor_str = novo_valor.strip()
 
             if st.button("💾 Atualizar campo"):
-                df_original = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
+                df_original = carregar_followups()
                 df_original.at[indice_selecionado, coluna_escolhida] = novo_valor_str
-                df_original.to_csv(caminho_csv, index=False, encoding="utf-8-sig")
+                df_original.to_csv(caminho_csv, sep=";", index=False, encoding="utf-8-sig")
 
                 try:
-                    arquivo.SetContentFile(caminho_csv)
-                    arquivo.Upload()
+                    drive = conectar_drive()
+                    arquivos = drive.ListFile({'q': "title = 'followups.csv' and trashed=false"}).GetList()
+                    if arquivos:
+                        arquivo = arquivos[0]
+                        arquivo.SetContentFile(caminho_csv)
+                        arquivo.Upload()
                     st.info("📤 Arquivo 'followups.csv' atualizado no Google Drive.")
                 except Exception as e:
                     st.warning(f"Erro ao enviar para o Drive: {e}")
@@ -379,14 +367,16 @@ elif menu == "Meus Follow-ups":
 
             if usuario_logado in admin_users:
                 if st.button("🗑️ Excluir este follow-up"):
-                    df = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
-                    df.columns = df.columns.str.strip()
-                    df_original = df_original.drop(index=indice_selecionado)
-                    df_original.to_csv(caminho_csv, index=False)
+                    df_original = df.drop(index=indice_selecionado)
+                    df_original.to_csv(caminho_csv, sep=";", index=False, encoding="utf-8-sig")
 
                     try:
-                        arquivo.SetContentFile(caminho_csv)
-                        arquivo.Upload()
+                        drive = conectar_drive()
+                        arquivos = drive.ListFile({'q': "title = 'followups.csv' and trashed=false"}).GetList()
+                        if arquivos:
+                            arquivo = arquivos[0]
+                            arquivo.SetContentFile(caminho_csv)
+                            arquivo.Upload()
                         st.info("📤 Arquivo 'followups.csv' atualizado no Google Drive.")
                     except Exception as e:
                         st.warning(f"Erro ao enviar para o Drive: {e}")
