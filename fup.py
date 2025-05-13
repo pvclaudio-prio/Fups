@@ -30,7 +30,7 @@ st.set_page_config(layout = 'wide')
 #st.sidebar.text(f"Diretório atual: {os.getcwd()}")
 
 caminho_csv = "followups.csv"
-admin_users = ["cvieira", "amendonca", "mathayde", "bella"]
+admin_users = ["cvieira", "amendonca", "mathayde"]
 
 def enviar_email_gmail(destinatario, assunto, corpo_html):
     try:
@@ -133,7 +133,7 @@ users = {
     "auditoria": {"name": "Time Auditoria", "password": "auditoria"},
     "amendonca": {"name": "Alex Mendonça", "password": "1234"},
     "mathayde": {"name": "Maria Luiza", "password": "1234"},
-    "bella": {"name": "Isabella Miranda", "password": "claudio meu amor"}
+    "bella": {"name": "Isabella Miranda", "password": "1234"}
 }
 
 if "logged_in" not in st.session_state:
