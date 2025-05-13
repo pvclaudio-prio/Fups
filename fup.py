@@ -284,7 +284,7 @@ elif menu == "Meus Follow-ups":
         caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
         arquivo.GetContentFile(caminho_temp)
 
-        df = pd.read_csv(caminho_temp, sep=";", encoding="utf-8")
+        df = pd.read_csv(caminho_temp)
 
         usuario_logado = st.session_state.username
         nome_usuario = users[usuario_logado]["name"]
@@ -699,7 +699,7 @@ elif menu == "Visualizar Evidências":
 
 elif menu == "🔍 Chatbot FUP":
 
-    st.title("🤖 Chatbot Auditoria")
+    st.title("🤖 Chatbot FUP com Pergunta Livre")
 
     @st.cache_data
     def carregar_followups():
@@ -718,7 +718,7 @@ elif menu == "🔍 Chatbot FUP":
         st.warning("Nenhum dado disponível.")
         st.stop()
 
-    st.markdown("### 📝 Digite sua pergunta sobre os relatórios de auditoria:")
+    st.markdown("### 📝 Digite sua pergunta sobre os follow-ups:")
     pergunta = st.text_input("Ex: Quais follow-ups em andamento no ambiente SAP em 2024?", key="pergunta_fup")
     enviar = st.button("📨 Enviar")
 
@@ -798,7 +798,7 @@ elif menu == "🔍 Chatbot FUP":
 
         # 🧠 Prompt para análise
         system_prompt = f"""
-Você é um especialista de auditoria interna.
+Você é um assistente de auditoria interna.
 
 Sua tarefa é responder perguntas com base nos follow-ups abaixo, de forma clara, objetiva e profissional.
 
@@ -869,7 +869,7 @@ Base de dados:
             resposta_final = f"(Erro ao revisar resposta: {response_revisor.status_code})\n\n{resposta_final}"
 
         # 💬 Exibir resposta e base
-        st.markdown("### 💬 Resposta do Agente")
+        st.markdown("### 💬 Resposta do Assistente")
         st.write(resposta_final)
 
         st.markdown("### 📋 Follow-ups encontrados:")
