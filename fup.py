@@ -697,7 +697,7 @@ elif menu == "Visualizar Evidências":
 
 elif menu == "🔍 Chatbot FUP":
     st.title("🤖 Chatbot FUP com Pergunta Livre")
-    
+
     @st.cache_data
     def carregar_followups():
         drive = conectar_drive()
@@ -718,11 +718,12 @@ elif menu == "🔍 Chatbot FUP":
     prompt_chat = st.chat_input("📨 Faça uma pergunta sobre seus follow-ups")
     resposta_final = "❌ Nenhuma resposta foi gerada."
 
+    # ✅ Protege todo o código dentro de if prompt_chat:
     if prompt_chat:
         st.write(f"🤔 Você: {prompt_chat}")
         API_KEY = st.secrets["openai"]["api_key"]
 
-        # --- Extração de filtros via regex
+        # 🔍 Extração de filtros via regex
         match = re.search(r"(ambiente|status|auditoria)\s(.+?)(?:\s|$)", prompt_chat, re.IGNORECASE)
         ano_match = re.search(r"(\d{4})", prompt_chat)
 
@@ -736,7 +737,7 @@ elif menu == "🔍 Chatbot FUP":
         if ano_match:
             filtros["Ano"] = ano_match.group(1)
 
-        # --- Aplicar filtros na base
+        # 📊 Aplicar filtros simples
         if filtros:
             df_filtrado = df.copy()
             for col in df_filtrado.select_dtypes(include="object").columns:
@@ -753,16 +754,13 @@ elif menu == "🔍 Chatbot FUP":
         else:
             dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
 
-        # --- Prompt principal do sistema
+        # 🎯 Prompt principal
         system_prompt = f"""
 Você é um assistente de auditoria interna.
 
-Sua tarefa é responder perguntas sobre follow-ups com base na base de dados abaixo.
+Sua tarefa é responder perguntas sobre follow-ups com base nos dados abaixo.
 
-Instruções:
-- Seja direto e claro.
-- Se não houver dados, diga claramente.
-- Use a base abaixo como referência única.
+Responda de forma objetiva, clara e concisa.
 
 Base de dados:
 {dados_markdown}
@@ -796,14 +794,15 @@ Base de dados:
         else:
             resposta_final = f"Erro na API: {response.status_code} - {response.text}"
 
-        # --- Revisor
+        # ✨ Revisor da resposta
         revisor_prompt = f"""
-Você é um revisor que deve reescrever a resposta com:
-- Clareza e concisão
+Você é um revisor técnico. Reescreva a resposta abaixo com:
+- Clareza
+- Estrutura objetiva
+- Sem repetições
 - Correção gramatical
-- Estrutura direta
-Use os dados abaixo como referência:
 
+Base de dados:
 {dados_markdown}
 """
 
