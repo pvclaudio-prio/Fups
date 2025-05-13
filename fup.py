@@ -363,9 +363,9 @@ elif menu == "Meus Follow-ups":
                 novo_valor_str = novo_valor.strip()
 
             if st.button("💾 Atualizar campo"):
-                df_original = pd.read_csv(caminho_temp)
+                df_original = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
                 df_original.at[indice_selecionado, coluna_escolhida] = novo_valor_str
-                df_original.to_csv(caminho_csv, index=False)
+                df_original.to_csv(caminho_csv, index=False, encoding="utf-8-sig")
 
                 try:
                     arquivo.SetContentFile(caminho_csv)
