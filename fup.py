@@ -697,10 +697,7 @@ elif menu == "Visualizar Evidências":
         st.code(traceback.format_exc())
 
 elif menu == "🔍 Chatbot FUP":
-    import re
-    import pandas as pd
-    from difflib import get_close_matches
-
+    
     st.title("🤖 Chatbot FUP com Pergunta Livre")
 
     @st.cache_data
@@ -725,11 +722,11 @@ elif menu == "🔍 Chatbot FUP":
     enviar = st.button("📨 Enviar")
 
     if enviar:
-        st.write("✅ Botão 'Enviar' pressionado")
+        #st.write("✅ Botão 'Enviar' pressionado")
 
         if pergunta and isinstance(pergunta, str):
             prompt_chat = pergunta.strip().lower()
-            st.write("✅ prompt_chat recebido:", prompt_chat)
+            st.write("✅ chat recebido:", prompt_chat)
         else:
             st.error("❌ Nenhuma pergunta válida recebida.")
             st.stop()
