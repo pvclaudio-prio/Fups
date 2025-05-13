@@ -822,7 +822,7 @@ elif menu == "🔍 Chatbot FUP":
 
         # 🧠 Prompt para análise
         system_prompt = f"""
-Você é um assistente de auditoria interna.
+Você é um especialista de auditoria interna.
 
 Sua tarefa é responder perguntas com base nos follow-ups abaixo, de forma clara, objetiva e profissional.
 
