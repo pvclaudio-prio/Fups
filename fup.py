@@ -141,7 +141,7 @@ def carregar_followups():
     if not arquivos:
         df_vazio = pd.DataFrame(columns=colunas)
         caminho_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".csv").name
-        df_vazio.to_csv(caminho_temp, sep=",", index=False, encoding="utf-8-sig")
+        df_vazio.to_csv(caminho_temp, sep=";", index=False, encoding="utf-8-sig")
         novo_arquivo = drive.CreateFile({'title': 'followups.csv'})
         novo_arquivo.SetContentFile(caminho_temp)
         novo_arquivo.Upload()
@@ -151,9 +151,9 @@ def carregar_followups():
     arquivos[0].GetContentFile(caminho_temp)
 
     try:
-        df = pd.read_csv(caminho_temp, sep=",", encoding="utf-8-sig")
+        df = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
     except UnicodeDecodeError:
-        df = pd.read_csv(caminho_temp, sep=",", encoding="latin1")
+        df = pd.read_csv(caminho_temp, sep=";", encoding="latin1")
 
     return df
 
