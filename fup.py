@@ -696,6 +696,8 @@ elif menu == "Visualizar Evidências":
         st.code(traceback.format_exc())
 
 elif menu == "🔍 Chatbot FUP":
+    import re  # ✅ Import necessário para evitar NameError
+
     st.title("🤖 Chatbot FUP com Pergunta Livre")
 
     @st.cache_data
@@ -732,7 +734,7 @@ elif menu == "🔍 Chatbot FUP":
         API_KEY = st.secrets["openai"]["api_key"]
         filtros = {}
 
-        # ✅ Regex correta e segura
+        # ✅ Regex estável com import garantido
         if isinstance(prompt_chat, str) and prompt_chat:
             st.write("🔍 Rodando re.search com:", prompt_chat)
 
@@ -840,7 +842,7 @@ Base de dados:
         else:
             resposta_final = f"(Erro ao revisar resposta: {response_revisor.status_code})\n\n{resposta_final}"
 
-        # 💬 Exibir resposta e tabela
+        # 💬 Exibir resposta e base
         st.markdown("### 💬 Resposta do Assistente")
         st.write(resposta_final)
 
