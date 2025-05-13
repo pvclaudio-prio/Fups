@@ -821,9 +821,17 @@ elif menu == "🔍 Chatbot FUP":
 
         # 🧠 Prompt para análise
         system_prompt = f"""
-Você é um especialista de auditoria interna.
+Você é um analista sênior de auditoria interna.
 
-Sua tarefa é responder perguntas com base nos follow-ups abaixo, de forma clara, objetiva e profissional.
+Sua tarefa é responder perguntas com base nos follow-ups abaixo.
+
+### Instruções:
+- Leia a pergunta do usuário e identifique os filtros implícitos (ex: status, ambiente, ano, responsável, etc.).
+- Aplique os filtros mentalmente sobre a base e retorne uma análise direta com os dados relevantes.
+- Resuma se houver muitos registros.
+- Se não encontrar registros, diga "Não há registros compatíveis".
+- Responda com linguagem clara, técnica e profissional.
+- Evite repetições e exageros.
 
 Base de dados:
 {dados_markdown}
