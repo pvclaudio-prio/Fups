@@ -165,7 +165,7 @@ users = {
     "amendonca": {"name": "Alex Mendonça", "password": "1234"},
     "mathayde": {"name": "Maria Luiza", "password": "1234"},
     "bella": {"name": "Isabella Miranda", "password": "1234"},
-    "ysouza": {"name": "Yasmim Souza", "password": "compliance@2025"},
+    "ysouza": {"name": "Yasmin Souza", "password": "compliance@2025"},
     "alrodrigues": {"name": "Aline Rodrigues", "password": "sms@2025"}
 }
 
