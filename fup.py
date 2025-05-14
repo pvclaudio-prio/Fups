@@ -730,7 +730,7 @@ elif menu == "Visualizar Evidências":
 elif menu == "🔍 Chatbot FUP":
 
     st.title("🤖 Chatbot dos relatórios de auditoria")
-    if st.session_state.username in admin_users:
+    if st.session_state.username in chat_users:
         def carregar_followups():
             drive = conectar_drive()
             arquivos = drive.ListFile({
@@ -931,7 +931,7 @@ elif menu == "🔍 Chatbot FUP":
             else:
                 st.info("Nenhum follow-up encontrado com os critérios aplicados.")
     else:
-        st.warning("Você não tem permissão de acessar o chatbot, solicite ao time de auditoria!")
+        st.warning("Você não tem permissão para acessar o chatbot, solicite ao time de auditoria!")
         
 # Função para enviar e-mail mensal com follow-ups vencidos
 
