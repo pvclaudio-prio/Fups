@@ -434,8 +434,8 @@ elif menu == "Meus Follow-ups":
         st.error(f"Erro ao acessar dados do Google Drive: {e}")
 
 elif menu == "Cadastrar Follow-up":
+    st.title("📝 Cadastrar Follow-up")
     if st.session_state.username in cadastro_users:
-        st.title("📝 Cadastrar Follow-up")
         st.info("Aqui você poderá cadastrar um novo follow-up.")
     
         with st.form("form_followup"):
