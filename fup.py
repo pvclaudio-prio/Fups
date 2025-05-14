@@ -255,11 +255,12 @@ if menu == "Dashboard":
         andamento = (df["Status"] == "Em Andamento").sum()
         taxa_conclusao = round((concluidos / total) * 100, 1) if total > 0 else 0.0
 
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5)
         col1.metric("Total Follow-ups", total)
         col2.metric("Concluídos", concluidos)
         col3.metric("Pendentes", pendentes)
-        col4.metric("Conclusão (%)", f"{taxa_conclusao}%")
+        col4.metric("Em Andamento", em andamento)
+        col5.metric("Conclusão (%)", f"{taxa_conclusao}%")
 
         # --- Gráficos ---
         st.subheader("📌 Distribuição por Status")
