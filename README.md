@@ -102,5 +102,3 @@ A aplicação segue uma arquitetura leve baseada em microserviços e APIs, com a
 
 O sistema é modular, extensível e pode ser integrado a agendadores externos (cron, Airflow, Zapier) para automações futuras.
 
-Recomenda-se versão de produção com controle de acesso OAuth e dashboard de gestão centralizada para escalabilidade em auditorias corporativas.
-
