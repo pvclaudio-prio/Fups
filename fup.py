@@ -637,6 +637,11 @@ elif menu == "Visualizar Evidências":
 
     try:
         drive = conectar_drive()
+        df = carregar_followups()
+        df.columns = df.columns.str.strip()
+
+        usuario_logado = st.session_state.username
+        nome_usuario = users[usuario_logado]["name"].lower()
 
         # Pasta "evidencias"
         pasta_principal = drive.ListFile({
@@ -649,23 +654,25 @@ elif menu == "Visualizar Evidências":
 
         pasta_id = pasta_principal[0]['id']
 
-        # Subpastas tipo indice_1, indice_2...
         subpastas = drive.ListFile({
             'q': f"'{pasta_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
         }).GetList()
 
-        if not subpastas:
-            st.info("Nenhuma evidência disponível.")
-            st.stop()
-
-        # Cria dicionário com chaves como "1", "2", etc.
-        opcoes = {
-            p['title'].split('_')[1]: {'id': p['id'], 'obj': p}
-            for p in subpastas if p['title'].startswith('indice_') and '_' in p['title']
-        }
+        if usuario_logado in admin_users:
+            opcoes = {
+                p['title'].split('_')[1]: {'id': p['id'], 'obj': p}
+                for p in subpastas if p['title'].startswith('indice_') and '_' in p['title']
+            }
+        else:
+            indices_usuario = df[df['Responsavel'].str.lower() == nome_usuario].index.astype(str).tolist()
+            opcoes = {
+                p['title'].split('_')[1]: {'id': p['id'], 'obj': p}
+                for p in subpastas
+                if p['title'].startswith('indice_') and '_' in p['title'] and p['title'].split('_')[1] in indices_usuario
+            }
 
         if not opcoes:
-            st.warning("Nenhuma subpasta válida encontrada no Google Drive.")
+            st.warning("Você não possui evidências associadas.")
             st.stop()
 
         indices_disponiveis = sorted(opcoes.keys(), key=int)
@@ -713,8 +720,7 @@ elif menu == "Visualizar Evidências":
             mime="application/zip"
         )
 
-        # Botão de exclusão (somente admin)
-        if st.session_state.username in admin_users:
+        if usuario_logado in admin_users:
             if st.button("🗑️ Excluir todas as evidências deste índice"):
                 try:
                     pasta_obj.Delete()
