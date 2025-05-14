@@ -31,6 +31,8 @@ st.set_page_config(layout = 'wide')
 
 caminho_csv = "followups.csv"
 admin_users = ["cvieira", "amendonca", "mathayde"]
+cadastro_users = ["cvieira", "amendonca", "mathayde"]
+chat_users = ["cvieira", "amendonca", "mathayde"]
 
 def enviar_email_gmail(destinatario, assunto, corpo_html):
     try:
@@ -432,96 +434,99 @@ elif menu == "Meus Follow-ups":
         st.error(f"Erro ao acessar dados do Google Drive: {e}")
 
 elif menu == "Cadastrar Follow-up":
-    st.title("📝 Cadastrar Follow-up")
-    st.info("Aqui você poderá cadastrar um novo follow-up.")
-
-    with st.form("form_followup"):
-        titulo = st.text_input("Título")
-        ambiente = st.text_input("Ambiente")
-        ano = st.selectbox("Ano", list(range(2020, date.today().year + 2)))
-        auditoria = st.text_input("Auditoria")
-        risco = st.selectbox("Risco", ["Baixo", "Médio", "Alto"])
-        plano = st.text_area("Plano de Ação")
-        responsavel = st.text_input("Responsável")
-        usuario = st.text_input("Usuário")
-        email = st.text_input("E-mail do Responsável")
-        prazo = st.date_input("Prazo", min_value=date.today())
-        data_conclusao = st.date_input("Data de Conclusão", value=date.today())
-        status = st.selectbox("Status", ["Pendente", "Em Andamento", "Concluído"])
-        avaliacao = st.selectbox("Avaliação FUP", ["", "Satisfatório", "Insatisfatório"])
-        observacao = st.text_area("Observação")
-
-        submitted = st.form_submit_button("Salvar Follow-up")
-
-    if submitted:
-        novo = {
-            "Titulo": titulo,
-            "Ambiente": ambiente,
-            "Ano": ano,
-            "Auditoria": auditoria,
-            "Risco": risco,
-            "Plano de Acao": plano,
-            "Responsavel": responsavel,
-            "Usuario": usuario,
-            "E-mail": email,
-            "Prazo": prazo.strftime("%Y-%m-%d"),
-            "Data de Conclusão": data_conclusao.strftime("%Y-%m-%d"),
-            "Status": status,
-            "Avaliação FUP": avaliacao,
-            "Observação": observacao
-        }
-
-        try:
-            # Conecta ao Google Drive e busca o followups.csv
-            drive = conectar_drive()
-            arquivos = drive.ListFile({
-                'q': "title = 'followups.csv' and trashed=false"
-            }).GetList()
-
-            if arquivos:
-                arquivo = arquivos[0]
-                caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
-                arquivo.GetContentFile(caminho_temp)
-                df = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
+    if st.session_state.username in cadastro_users:
+        st.title("📝 Cadastrar Follow-up")
+        st.info("Aqui você poderá cadastrar um novo follow-up.")
+    
+        with st.form("form_followup"):
+            titulo = st.text_input("Título")
+            ambiente = st.text_input("Ambiente")
+            ano = st.selectbox("Ano", list(range(2020, date.today().year + 2)))
+            auditoria = st.text_input("Auditoria")
+            risco = st.selectbox("Risco", ["Baixo", "Médio", "Alto"])
+            plano = st.text_area("Plano de Ação")
+            responsavel = st.text_input("Responsável")
+            usuario = st.text_input("Usuário")
+            email = st.text_input("E-mail do Responsável")
+            prazo = st.date_input("Prazo", min_value=date.today())
+            data_conclusao = st.date_input("Data de Conclusão", value=date.today())
+            status = st.selectbox("Status", ["Pendente", "Em Andamento", "Concluído"])
+            avaliacao = st.selectbox("Avaliação FUP", ["", "Satisfatório", "Insatisfatório"])
+            observacao = st.text_area("Observação")
+    
+            submitted = st.form_submit_button("Salvar Follow-up")
+    
+        if submitted:
+            novo = {
+                "Titulo": titulo,
+                "Ambiente": ambiente,
+                "Ano": ano,
+                "Auditoria": auditoria,
+                "Risco": risco,
+                "Plano de Acao": plano,
+                "Responsavel": responsavel,
+                "Usuario": usuario,
+                "E-mail": email,
+                "Prazo": prazo.strftime("%Y-%m-%d"),
+                "Data de Conclusão": data_conclusao.strftime("%Y-%m-%d"),
+                "Status": status,
+                "Avaliação FUP": avaliacao,
+                "Observação": observacao
+            }
+    
+            try:
+                # Conecta ao Google Drive e busca o followups.csv
+                drive = conectar_drive()
+                arquivos = drive.ListFile({
+                    'q': "title = 'followups.csv' and trashed=false"
+                }).GetList()
+    
+                if arquivos:
+                    arquivo = arquivos[0]
+                    caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
+                    arquivo.GetContentFile(caminho_temp)
+                    df = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
+                else:
+                    df = pd.DataFrame()
+                    arquivo = drive.CreateFile({'title': 'followups.csv'})
+    
+                # Atualiza e salva
+                df = pd.concat([df, pd.DataFrame([novo])], ignore_index=True)
+                df.to_csv(caminho_csv, sep=";", index=False, encoding="utf-8-sig")
+    
+                arquivo.SetContentFile(caminho_csv)
+                arquivo.Upload()
+    
+                st.success("✅ Follow-up salvo e sincronizado com o Google Drive!")
+    
+                corpo = f"""
+                <p>Olá <b>{responsavel}</b>,</p>
+                <p>Um novo follow-up foi atribuído a você:</p>
+                <ul>
+                    <li><b>Título:</b> {titulo}</li>
+                    <li><b>Auditoria:</b> {auditoria}</li>
+                    <li><b>Prazo:</b> {prazo.strftime('%d/%m/%Y')}</li>
+                    <li><b>Status:</b> {status}</li>
+                </ul>
+                <p>Acesse o aplicativo para incluir evidências e acompanhar o andamento:</p>
+                <p><a href='https://fup-auditoria.streamlit.app/' target='_blank'>🔗 fup-auditoria.streamlit.app</a></p>
+                <br>
+                <p>Atenciosamente,<br>Auditoria Interna</p>
+                """
+    
+                if email:
+                    sucesso_envio = enviar_email_gmail(
+                        destinatario=email,
+                        assunto=f"[Follow-up] Nova Atribuição: {titulo}",
+                        corpo_html=corpo
+                    )
+                    if sucesso_envio:
+                        st.success("📧 E-mail de notificação enviado com sucesso!")
+    
+            except Exception as e:
+                st.error(f"Erro ao cadastrar follow-up: {e}")
             else:
-                df = pd.DataFrame()
-                arquivo = drive.CreateFile({'title': 'followups.csv'})
-
-            # Atualiza e salva
-            df = pd.concat([df, pd.DataFrame([novo])], ignore_index=True)
-            df.to_csv(caminho_csv, sep=";", index=False, encoding="utf-8-sig")
-
-            arquivo.SetContentFile(caminho_csv)
-            arquivo.Upload()
-
-            st.success("✅ Follow-up salvo e sincronizado com o Google Drive!")
-
-            corpo = f"""
-            <p>Olá <b>{responsavel}</b>,</p>
-            <p>Um novo follow-up foi atribuído a você:</p>
-            <ul>
-                <li><b>Título:</b> {titulo}</li>
-                <li><b>Auditoria:</b> {auditoria}</li>
-                <li><b>Prazo:</b> {prazo.strftime('%d/%m/%Y')}</li>
-                <li><b>Status:</b> {status}</li>
-            </ul>
-            <p>Acesse o aplicativo para incluir evidências e acompanhar o andamento:</p>
-            <p><a href='https://fup-auditoria.streamlit.app/' target='_blank'>🔗 fup-auditoria.streamlit.app</a></p>
-            <br>
-            <p>Atenciosamente,<br>Auditoria Interna</p>
-            """
-
-            if email:
-                sucesso_envio = enviar_email_gmail(
-                    destinatario=email,
-                    assunto=f"[Follow-up] Nova Atribuição: {titulo}",
-                    corpo_html=corpo
-                )
-                if sucesso_envio:
-                    st.success("📧 E-mail de notificação enviado com sucesso!")
-
-        except Exception as e:
-            st.error(f"Erro ao cadastrar follow-up: {e}")
+                st.warning("Você não possui permissão para cadastrar follow ups!")
 
 elif menu == "Enviar Evidências":
     st.title("📌 Enviar Evidências")
