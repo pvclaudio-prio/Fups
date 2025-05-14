@@ -259,7 +259,7 @@ if menu == "Dashboard":
         col1.metric("Total Follow-ups", total)
         col2.metric("Concluídos", concluidos)
         col3.metric("Pendentes", pendentes)
-        col4.metric("Em Andamento", em andamento)
+        col4.metric("Em Andamento", andamento)
         col5.metric("Conclusão (%)", f"{taxa_conclusao}%")
 
         # --- Gráficos ---
