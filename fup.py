@@ -880,8 +880,7 @@ elif menu == "🔍 Chatbot FUP":
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt_chat}
                 ],
-                "temperature": 0.2,
-                "max_tokens": 500
+                "temperature": 0.2
             }
     
             headers = {
@@ -920,8 +919,7 @@ elif menu == "🔍 Chatbot FUP":
                     {"role": "system", "content": revisor_prompt},
                     {"role": "user", "content": resposta_final}
                 ],
-                "temperature": 0.2,
-                "max_tokens": 500
+                "temperature": 0.2
             }
     
             response_revisor = requests.post(
