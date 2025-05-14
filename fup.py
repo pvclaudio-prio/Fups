@@ -972,5 +972,6 @@ def enviar_emails_followups_vencidos():
 
 # 🔁 Botão para envio manual
 
-if st.sidebar.button("✉️ Enviar lembrete de follow-ups vencidos"):
-    enviar_emails_followups_vencidos()
+if st.session_state.username in admin_users:
+    if st.sidebar.button("✉️ Enviar lembrete de follow-ups vencidos"):
+        enviar_emails_followups_vencidos()
