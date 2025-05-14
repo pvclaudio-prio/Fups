@@ -525,8 +525,8 @@ elif menu == "Cadastrar Follow-up":
     
             except Exception as e:
                 st.error(f"Erro ao cadastrar follow-up: {e}")
-            else:
-                st.warning("Você não possui permissão para cadastrar follow ups!")
+        else:
+            st.warning("Você não possui permissão para cadastrar follow ups!")
 
 elif menu == "Enviar Evidências":
     st.title("📌 Enviar Evidências")
