@@ -848,7 +848,8 @@ elif menu == "🔍 Chatbot FUP":
     2. **Base filtrada (`dados_filtrados`)**: contém apenas os registros mais relevantes com base na pergunta do usuário.
     
     Sua missão é:
-    - Responder com base **principalmente na base filtrada**, mas sempre **comparando com a base total**.
+    - Responder com base **principalmente na base total**, mas sempre **comparando com a base filtrada** para validar sua resposta.
+    - Trazer uma lista com a relação de relatórios identificados com base nos critérios especificados pelo usuário.
     - Informar quantos registros estão na base total e quantos foram filtrados.
     - Indicar percentuais, tendências ou discrepâncias entre as duas bases.
     - Apontar quando um filtro reduz muito a base (ex: “apenas 3 dos 50 registros totais possuem esse status”).
