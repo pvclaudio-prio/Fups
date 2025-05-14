@@ -326,6 +326,9 @@ elif menu == "Meus Follow-ups":
         status_lista = ["Todos"] + sorted(df["Status"].dropna().unique().tolist())
         status_selecionado = st.sidebar.selectbox("Status", status_lista)
 
+        status_ambiente = ["Todos"] + sorted(df["Ambiente"].dropna().unique().tolist())
+        status_ambiente_selecionado = st.sidebar.selectbox("Ambiente", status_ambiente)
+
         anos = ["Todos"] + sorted(df["Ano"].dropna().unique().tolist())
         ano_selecionado = st.sidebar.selectbox("Ano", anos)
 
@@ -340,6 +343,9 @@ elif menu == "Meus Follow-ups":
         if status_selecionado != "Todos":
             df = df[df["Status"] == status_selecionado]
 
+        if status_ambiente_selecionado != "Todos":
+            df = df[df["Ambiente"] == status_ambiente_selecionado]
+        
         if ano_selecionado != "Todos":
             df = df[df["Ano"] == ano_selecionado]
 
