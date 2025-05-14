@@ -186,56 +186,6 @@ if not st.session_state.logged_in:
             st.error("Usuário ou senha incorretos.")
     st.stop()
 
-# Função para enviar e-mail mensal com follow-ups vencidos
-
-def enviar_emails_followups_vencidos():
-    df = carregar_followups()
-    df.columns = df.columns.str.strip()
-
-    df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
-    df_vencidos = df[(df["Status"].str.lower() != "concluído") & (df["Prazo"] < pd.Timestamp.today())]
-
-    if df_vencidos.empty:
-        st.info("✅ Nenhum follow-up vencido identificado para envio.")
-        return
-
-    # Agrupar por responsável
-    responsaveis = df_vencidos["E-mail"].dropna().unique().tolist()
-
-    for email in responsaveis:
-        df_resp = df_vencidos[df_vencidos["E-mail"] == email]
-
-        if df_resp.empty:
-            continue
-
-        corpo = f"""
-        <p>Olá,</p>
-        <p>Você possui os seguintes follow-ups vencidos:</p>
-        <table border='1' cellpadding='4' cellspacing='0'>
-            <tr><th>Título</th><th>Auditoria</th><th>Plano de Ação</th><th>Responsável</th><th>Prazo</th><th>Status</th></tr>
-        """
-
-        for _, row in df_resp.iterrows():
-            corpo += f"<tr><td>{row['Titulo']}</td><td>{row['Auditoria']}</td><td>{row['Plano de Acao']}</td><td>{row['Responsavel']}</td><td>{row['Prazo'].date()}</td><td>{row['Status']}</td></tr>"
-
-        corpo += """
-        </table>
-        <p>Por favor, atualize os registros no sistema ou entre em contato com a Auditoria Interna.</p>
-        <p>Atenciosamente,<br>Time de Auditoria</p>
-        """
-
-        try:
-            yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
-            yag.send(to=email, subject="📌 Follow-ups vencidos - Auditoria Interna", contents=corpo)
-            st.success(f"📧 E-mail enviado para: {email}")
-        except Exception as e:
-            st.warning(f"Erro ao enviar para {email}: {e}")
-
-# 🔁 Botão para envio manual (pode ser programado futuramente via agendamento externo)
-
-if st.sidebar.button("✉️ Enviar lembrete de follow-ups vencidos"):
-    enviar_emails_followups_vencidos()
-
 # --- Layout principal após login ---
 st.sidebar.image("PRIO_SEM_POLVO_PRIO_PANTONE_LOGOTIPO_Azul.png")
 nome_usuario = users[st.session_state.username]["name"]
@@ -975,3 +925,52 @@ Base de dados:
             st.dataframe(df_filtrado, use_container_width=True)
         else:
             st.info("Nenhum follow-up encontrado com os critérios aplicados.")
+# Função para enviar e-mail mensal com follow-ups vencidos
+
+def enviar_emails_followups_vencidos():
+    df = carregar_followups()
+    df.columns = df.columns.str.strip()
+
+    df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
+    df_vencidos = df[(df["Status"].str.lower() != "concluído") & (df["Prazo"] < pd.Timestamp.today())]
+
+    if df_vencidos.empty:
+        st.info("✅ Nenhum follow-up vencido identificado para envio.")
+        return
+
+    # Agrupar por responsável
+    responsaveis = df_vencidos["E-mail"].dropna().unique().tolist()
+
+    for email in responsaveis:
+        df_resp = df_vencidos[df_vencidos["E-mail"] == email]
+
+        if df_resp.empty:
+            continue
+
+        corpo = f"""
+        <p>Olá,</p>
+        <p>Você possui os seguintes follow-ups vencidos:</p>
+        <table border='1' cellpadding='4' cellspacing='0'>
+            <tr><th>Título</th><th>Auditoria</th><th>Plano de Ação</th><th>Responsável</th><th>Prazo</th><th>Status</th></tr>
+        """
+
+        for _, row in df_resp.iterrows():
+            corpo += f"<tr><td>{row['Titulo']}</td><td>{row['Auditoria']}</td><td>{row['Plano de Acao']}</td><td>{row['Responsavel']}</td><td>{row['Prazo'].date()}</td><td>{row['Status']}</td></tr>"
+
+        corpo += """
+        </table>
+        <p>Por favor, atualize os registros no sistema ou entre em contato com a Auditoria Interna.</p>
+        <p>Atenciosamente,<br>Time de Auditoria</p>
+        """
+
+        try:
+            yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
+            yag.send(to=email, subject="📌 Follow-ups vencidos - Auditoria Interna", contents=corpo)
+            st.success(f"📧 E-mail enviado para: {email}")
+        except Exception as e:
+            st.warning(f"Erro ao enviar para {email}: {e}")
+
+# 🔁 Botão para envio manual
+
+if st.sidebar.button("✉️ Enviar lembrete de follow-ups vencidos"):
+    enviar_emails_followups_vencidos()
