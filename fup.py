@@ -849,11 +849,11 @@ elif menu == "🔍 Chatbot FUP":
     
     Sua missão é:
     - Responder com base **principalmente na base filtrada**, mas sempre **comparando com a base total** para validar sua resposta.
-    - Na sua resposta não faça diferenciação entre as bases e não apresente informações conflitantes sobre as duas. Analise as duas bases e chegue na melhor resposta.
+    - Na sua resposta não faça diferenciação entre os nomes das bases, faça referência à uma base única e não apresente informações conflitantes sobre as duas. Analise as duas bases e chegue na melhor resposta.
     - Trazer uma lista com a relação de relatórios identificados com base nos critérios especificados pelo usuário.
     - Informar quantos registros estão na base total e quantos foram filtrados.
     - Indicar percentuais, tendências ou discrepâncias entre as duas bases.
-    - Apontar quando um filtro reduz muito a base (ex: “apenas 3 dos 50 registros totais possuem esse status”).
+    - Fazer um resumo executivo no início sobre os principais assuntos críticos abordados na descrição dos follow ups.
     
     ---
     
