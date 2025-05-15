@@ -159,15 +159,19 @@ def carregar_followups():
     return df
 
 # --- Usuários e autenticação simples ---
-users = {
-    "cvieira": {"name": "Claudio Vieira", "password": "1234"},
-    "auditoria": {"name": "Time Auditoria", "password": "auditoria"},
-    "amendonca": {"name": "Alex Mendonça", "password": "1234"},
-    "mathayde": {"name": "Maria Luiza", "password": "1234"},
-    "bella": {"name": "Isabella Miranda", "password": "1234"},
-    "ysouza": {"name": "Yasmin Souza", "password": "compliance@2025"},
-    "alrodrigues": {"name": "Aline Rodrigues", "password": "sms@2025"}
-}
+@st.cache_data
+def carregar_usuarios():
+    usuarios_config = st.secrets.get("users", {})
+    usuarios = {}
+    for user, dados in usuarios_config.items():
+        try:
+            nome, senha = dados.split("|", 1)
+            usuarios[user] = {"name": nome, "password": senha}
+        except:
+            st.warning(f"Erro ao carregar usuário '{user}' nos secrets.")
+    return usuarios
+
+users = carregar_usuarios()
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
