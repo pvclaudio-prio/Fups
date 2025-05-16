@@ -985,6 +985,9 @@ def enviar_emails_followups_vencidos():
         corpo += """
         </table>
         <p>Por favor, atualize os registros no sistema ou entre em contato com a Auditoria Interna.</p>
+        <p>Acesse o aplicativo para incluir evidências e acompanhar o andamento:</p>
+        <p><a href='https://fup-auditoria.streamlit.app/' target='_blank'>🔗 fup-auditoria.streamlit.app</a></p>
+        <br>
         <p>Atenciosamente,<br>Time de Auditoria</p>
         """
 
