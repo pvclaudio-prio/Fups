@@ -33,6 +33,7 @@ from email.mime.text import MIMEText
 st.set_page_config(layout = 'wide')
 
 #st.sidebar.text(f"Diretório atual: {os.getcwd()}")
+st.sidebar.text(f"Diretório atual: {pd.Timestamp.today()}")
 
 caminho_csv = "followups.csv"
 admin_users = ["cvieira", "amendonca", "mathayde"]
