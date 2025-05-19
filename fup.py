@@ -24,6 +24,7 @@ import requests
 import tempfile
 from difflib import get_close_matches
 import re
+from datetime import timedelta
 
 st.set_page_config(layout = 'wide')
 
@@ -1003,3 +1004,56 @@ def enviar_emails_followups_vencidos():
 if st.session_state.username in admin_users:
     if st.sidebar.button("✉️ Enviar lembrete de follow-ups vencidos"):
         enviar_emails_followups_vencidos()
+-------------------------------------------------------------------- e-mail de follow ups a vencer
+def enviar_emails_followups_a_vencer():
+    df = carregar_followups()
+    df.columns = df.columns.str.strip()
+    df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
+
+    hoje = pd.Timestamp.today()
+    limite = hoje + timedelta(days=30)
+
+    df_a_vencer = df[
+        (df["Status"].str.lower() != "concluído") &
+        (df["Prazo"] >= hoje) &
+        (df["Prazo"] <= limite)
+    ]
+
+    if df_a_vencer.empty:
+        st.info("✅ Nenhum follow-up com prazo a vencer em 30 dias.")
+        return
+
+    responsaveis = df_a_vencer["E-mail"].dropna().unique().tolist()
+
+    for email in responsaveis:
+        df_resp = df_a_vencer[df_a_vencer["E-mail"] == email]
+        if df_resp.empty:
+            continue
+
+        corpo = f"""
+        <p>Olá,</p>
+        <p>Você possui os seguintes follow-ups com prazo a vencer em até 30 dias:</p>
+        <table border='1' cellpadding='4' cellspacing='0'>
+            <tr><th>Título</th><th>Auditoria</th><th>Plano de Ação</th><th>Responsável</th><th>Prazo</th><th>Status</th></tr>
+        """
+
+        for _, row in df_resp.iterrows():
+            corpo += f"<tr><td>{row['Titulo']}</td><td>{row['Auditoria']}</td><td>{row['Plano_de_Acao']}</td><td>{row['Responsavel']}</td><td>{row['Prazo'].date()}</td><td>{row['Status']}</td></tr>"
+
+        corpo += """
+        </table>
+        <p>Por favor, antecipe ações necessárias e atualize o status no sistema.</p>
+        <p>Acesse o aplicativo para mais detalhes:</p>
+        <p><a href='https://fup-auditoria.streamlit.app/' target='_blank'>🔗 fup-auditoria.streamlit.app</a></p>
+        <br>
+        <p>Atenciosamente,<br>Time de Auditoria</p>
+        """
+
+        sucesso = enviar_email(destinatario=email, assunto="⏳ Follow-ups próximos do vencimento", corpo_html=corpo)
+        if sucesso:
+            st.success(f"📧 E-mail enviado para: {email}")
+
+if st.session_state.username in admin_users:
+    if st.sidebar.button("📅 Enviar lembrete de follow-ups a vencer"):
+        enviar_emails_followups_a_vencer()
+
