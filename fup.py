@@ -32,7 +32,7 @@ st.set_page_config(layout = 'wide')
 caminho_csv = "followups.csv"
 admin_users = ["cvieira", "amendonca", "mathayde"]
 cadastro_users = ["cvieira", "amendonca", "mathayde"]
-chat_users = ["cvieira", "amendonca", "mathayde"]
+chat_users = ["cvieira", "amendonca", "mathayde","bromanelli","ysouza"]
 
 def enviar_email_gmail(destinatario, assunto, corpo_html):
     try:
