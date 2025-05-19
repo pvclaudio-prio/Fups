@@ -971,7 +971,6 @@ elif menu == "🔍 Chatbot FUP":
 def enviar_emails_followups_vencidos():
     df = carregar_followups()
     df.columns = df.columns.str.strip()
-
     df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
     
     hoje = pd.Timestamp.today()
@@ -1028,7 +1027,6 @@ def enviar_emails_followups_vencidos():
                 server.send_message(msg)
 
             st.success(f"📧 E-mail enviado para: {email}")
-            st.sidebar.text(f"Diretório atual: {responsaveis_vencidos}")
         except Exception as e:
             st.warning(f"Erro ao enviar para {email}: {e}")
 
@@ -1105,3 +1103,5 @@ def enviar_emails_followups_a_vencer():
 if st.session_state.username in admin_users:
     if st.sidebar.button("📅 Enviar lembrete de follow-ups a vencer"):
         enviar_emails_followups_a_vencer()
+
+st.write(df.dtypes)
