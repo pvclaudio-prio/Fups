@@ -973,7 +973,15 @@ def enviar_emails_followups_vencidos():
     df.columns = df.columns.str.strip()
 
     df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
-    df_vencidos = df[(df["Status"].str.lower() != "concluído") & (df["Prazo"] < pd.Timestamp.today())]
+    
+    hoje = pd.Timestamp.today()
+    limite = hoje + timedelta(days=0)
+
+    df_vencidos = df[
+        (df["Status"].str.lower() != "concluído") &
+        (df["Prazo"] >= hoje) &
+        (df["Prazo"] <= limite)
+    ]
 
     if df_vencidos.empty:
         st.info("✅ Nenhum follow-up vencido identificado para envio.")
