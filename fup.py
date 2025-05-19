@@ -1036,6 +1036,8 @@ def enviar_emails_followups_vencidos():
 if st.session_state.username in admin_users:
     if st.sidebar.button("✉️ Enviar lembrete de follow-ups vencidos"):
         enviar_emails_followups_vencidos()
+
+st.sidebar.text(f"Diretório atual: {responsaveis_vencidos}")
 #-------------------------------------------------------------------- e-mail de follow ups a vencer
 def enviar_emails_followups_a_vencer():
     df = carregar_followups()
