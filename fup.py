@@ -28,7 +28,7 @@ from datetime import timedelta
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-
+from datetime import date
 
 st.set_page_config(layout = 'wide')
 
@@ -978,7 +978,7 @@ def enviar_emails_followups_vencidos():
 
     df_vencidos = df[
         (df["Status"].str.lower() != "concluído") &
-        (df["Prazo"] < limite)]
+        (df["Prazo"].dt.date < limite)]
 
     if df_vencidos.empty:
         st.info("✅ Nenhum follow-up vencido identificado para envio.")
@@ -1103,5 +1103,3 @@ def enviar_emails_followups_a_vencer():
 if st.session_state.username in admin_users:
     if st.sidebar.button("📅 Enviar lembrete de follow-ups a vencer"):
         enviar_emails_followups_a_vencer()
-
-st.write(df.dtypes)
