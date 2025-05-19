@@ -971,6 +971,7 @@ elif menu == "🔍 Chatbot FUP":
 def enviar_emails_followups_vencidos():
     df = carregar_followups()
     df.columns = df.columns.str.strip()
+    df["Prazo"] = pd.to_datetime(df["Prazo"], format="mixed", errors="coerce")
     df["Prazo"] = df["Prazo"].dt.normalize()
     hoje = pd.Timestamp.today().normalize()
 
@@ -1039,7 +1040,7 @@ if st.session_state.username in admin_users:
 def enviar_emails_followups_a_vencer():
     df = carregar_followups()
     df.columns = df.columns.str.strip()
-    df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
+    df["Prazo"] = pd.to_datetime(df["Prazo"], format="mixed", errors="coerce")
 
     hoje = pd.Timestamp.today()
     limite = hoje + timedelta(days=30)
