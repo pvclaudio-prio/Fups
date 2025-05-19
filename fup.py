@@ -249,7 +249,7 @@ if menu == "Dashboard":
             st.info("Nenhum dado disponível para exibir KPIs.")
             st.stop()
     
-        df["Prazo"] = pd.to_datetime(df["Prazo"], format="%Y-%m-%d", errors="coerce")
+        df["Prazo"] = pd.to_datetime(df["Prazo"], format="mixed", errors="coerce")
         df["Ano"] = df["Ano"].astype(str)
         df["Status"] = df["Status"].fillna("Não informado")
     
