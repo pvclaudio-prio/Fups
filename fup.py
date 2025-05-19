@@ -289,8 +289,6 @@ if menu == "Dashboard":
         st.plotly_chart(fig_auditoria, use_container_width=True)
     
         st.subheader("📅 Follow-ups por Ano")
-        df["Ano"] = df["Ano"].astype(str).str.extract(r"(\d{4})")  # extrai só o ano válido
-        df["Ano"] = pd.to_numeric(df["Ano"], errors="coerce").astype("Int64")
         ano_counts = df["Ano"].value_counts().sort_index().reset_index()
         ano_counts.columns = ["Ano", "Quantidade"]
         fig_ano = px.line(
