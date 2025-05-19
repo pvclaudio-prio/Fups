@@ -219,89 +219,89 @@ if menu == "Dashboard":
     st.title("📊 Painel de KPIs")
 
     try:
-        # Conecta ao Google Drive
-        drive = conectar_drive()
+    # Conecta ao Google Drive
+    drive = conectar_drive()
 
-        # Procura arquivo chamado 'followups.csv'
-        arquivos = drive.ListFile({
-            'q': "title = 'followups.csv' and trashed=false"
-        }).GetList()
+    # Procura arquivo chamado 'followups.csv'
+    arquivos = drive.ListFile({
+        'q': "title = 'followups.csv' and trashed=false"
+    }).GetList()
 
-        if not arquivos:
-            st.warning("Arquivo followups.csv não encontrado no Drive.")
-            st.stop()
+    if not arquivos:
+        st.warning("Arquivo followups.csv não encontrado no Drive.")
+        st.stop()
 
-        arquivo = arquivos[0]
-        caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
-        arquivo.GetContentFile(caminho_temp)
+    arquivo = arquivos[0]
+    caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
+    arquivo.GetContentFile(caminho_temp)
 
-        # Carrega CSV com pandas
-        df = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
-        df.columns = df.columns.str.strip()
+    # Carrega CSV com pandas
+    df = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
+    df.columns = df.columns.str.strip()
 
-        usuario_logado = st.session_state.username
-        nome_usuario = users[usuario_logado]["name"]
+    usuario_logado = st.session_state.username
+    nome_usuario = users[usuario_logado]["name"]
 
-        if usuario_logado not in admin_users:
-            df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
+    if usuario_logado not in admin_users:
+        df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
 
-        if df.empty:
-            st.info("Nenhum dado disponível para exibir KPIs.")
-            st.stop()
+    if df.empty:
+        st.info("Nenhum dado disponível para exibir KPIs.")
+        st.stop()
 
-        df["Prazo"] = pd.to_datetime(df["Prazo"])
-        df["Ano"] = df["Ano"].astype(str)
-        df["Status"] = df["Status"].fillna("Não informado")
+    df["Prazo"] = pd.to_datetime(df["Prazo"], format="%Y-%m-%d", errors="coerce")
+    df["Ano"] = df["Ano"].astype(str)
+    df["Status"] = df["Status"].fillna("Não informado")
 
-        # --- KPIs principais ---
-        total = len(df)
-        concluidos = (df["Status"] == "Concluído").sum()
-        pendentes = (df["Status"] == "Pendente").sum()
-        andamento = (df["Status"] == "Em Andamento").sum()
-        taxa_conclusao = round((concluidos / total) * 100, 1) if total > 0 else 0.0
+    # --- KPIs principais ---
+    total = len(df)
+    concluidos = (df["Status"] == "Concluído").sum()
+    pendentes = (df["Status"] == "Pendente").sum()
+    andamento = (df["Status"] == "Em Andamento").sum()
+    taxa_conclusao = round((concluidos / total) * 100, 1) if total > 0 else 0.0
 
-        col1, col2, col3, col4, col5 = st.columns(5)
-        col1.metric("Total Follow-ups", total)
-        col2.metric("Concluídos", concluidos)
-        col3.metric("Pendentes", pendentes)
-        col4.metric("Em Andamento", andamento)
-        col5.metric("Conclusão (%)", f"{taxa_conclusao}%")
+    col1, col2, col3, col4, col5 = st.columns(5)
+    col1.metric("Total Follow-ups", total)
+    col2.metric("Concluídos", concluidos)
+    col3.metric("Pendentes", pendentes)
+    col4.metric("Em Andamento", andamento)
+    col5.metric("Conclusão (%)", f"{taxa_conclusao}%")
 
-        # --- Gráficos ---
-        st.subheader("📌 Distribuição por Status")
-        fig_status = px.pie(
-            df,
-            names="Status",
-            title="Distribuição dos Follow-ups por Status",
-            hole=0.4
-        )
-        st.plotly_chart(fig_status, use_container_width=True)
+    # --- Gráficos ---
+    st.subheader("📌 Distribuição por Status")
+    fig_status = px.pie(
+        df,
+        names="Status",
+        title="Distribuição dos Follow-ups por Status",
+        hole=0.4
+    )
+    st.plotly_chart(fig_status, use_container_width=True)
 
-        st.subheader("📁 Follow-ups por Auditoria")
-        auditoria_counts = df["Auditoria"].value_counts().reset_index()
-        auditoria_counts.columns = ["Auditoria", "Quantidade"]
-        fig_auditoria = px.bar(
-            auditoria_counts,
-            x="Auditoria",
-            y="Quantidade",
-            title="Distribuição de Follow-ups por Auditoria"
-        )
-        st.plotly_chart(fig_auditoria, use_container_width=True)
+    st.subheader("📁 Follow-ups por Auditoria")
+    auditoria_counts = df["Auditoria"].value_counts().reset_index()
+    auditoria_counts.columns = ["Auditoria", "Quantidade"]
+    fig_auditoria = px.bar(
+        auditoria_counts,
+        x="Auditoria",
+        y="Quantidade",
+        title="Distribuição de Follow-ups por Auditoria"
+    )
+    st.plotly_chart(fig_auditoria, use_container_width=True)
 
-        st.subheader("📅 Follow-ups por Ano")
-        ano_counts = df["Ano"].value_counts().sort_index().reset_index()
-        ano_counts.columns = ["Ano", "Quantidade"]
-        fig_ano = px.line(
-            ano_counts,
-            x="Ano",
-            y="Quantidade",
-            markers=True,
-            title="Evolução de Follow-ups por Ano"
-        )
-        st.plotly_chart(fig_ano, use_container_width=True)
+    st.subheader("📅 Follow-ups por Ano")
+    ano_counts = df["Ano"].value_counts().sort_index().reset_index()
+    ano_counts.columns = ["Ano", "Quantidade"]
+    fig_ano = px.line(
+        ano_counts,
+        x="Ano",
+        y="Quantidade",
+        markers=True,
+        title="Evolução de Follow-ups por Ano"
+    )
+    st.plotly_chart(fig_ano, use_container_width=True)
 
-    except Exception as e:
-        st.error(f"Erro ao acessar dados do Google Drive: {e}")
+except Exception as e:
+    st.error(f"Erro ao acessar dados do Google Drive: {e}")
 
 elif menu == "Meus Follow-ups":
     st.title("📁 Meus Follow-ups")
