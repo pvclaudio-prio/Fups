@@ -316,7 +316,10 @@ elif menu == "Meus Follow-ups":
 
         if usuario_logado not in admin_users:
             df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
-        df["Prazo"] = pd.to_datetime(df["Prazo"], format = "mixed")
+            
+        df["Prazo"] = pd.to_datetime(df["Prazo"], format = "mixed", errors="coerce")
+        df["Prazo"] = df["Prazo"].dt.strftime("%d/%m/%Y")
+        df["Data de Conclusão"] = df["Data de Conclusão"].dt.strftime("%d/%m/%Y")
         df["Ano"] = df["Ano"].astype(str)
 
         # --- Filtros na sidebar ---
