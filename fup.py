@@ -33,7 +33,7 @@ from datetime import date
 st.set_page_config(layout = 'wide')
 
 #st.sidebar.text(f"Diretório atual: {os.getcwd()}")
-st.sidebar.text(f"Diretório atual: {pd.Timestamp.today()}")
+st.write("Hoje:", pd.Timestamp.today())
 
 caminho_csv = "followups.csv"
 admin_users = ["cvieira", "amendonca", "mathayde"]
@@ -1104,5 +1104,3 @@ if st.session_state.username in admin_users:
     if st.sidebar.button("📅 Enviar lembrete de follow-ups a vencer"):
         enviar_emails_followups_a_vencer()
         
-st.write("Hoje:", pd.Timestamp.today())
-st.write("Prazo (amostra):", df["Prazo"].sort_values().head(10))
