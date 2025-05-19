@@ -25,6 +25,10 @@ import tempfile
 from difflib import get_close_matches
 import re
 from datetime import timedelta
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 
 st.set_page_config(layout = 'wide')
 
@@ -34,15 +38,6 @@ caminho_csv = "followups.csv"
 admin_users = ["cvieira", "amendonca", "mathayde"]
 cadastro_users = ["cvieira", "amendonca", "mathayde"]
 chat_users = ["cvieira", "amendonca", "mathayde","bromanelli","ysouza"]
-
-def enviar_email_gmail(destinatario, assunto, corpo_html):
-    try:
-        yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
-        yag.send(to=destinatario, subject=assunto, contents=corpo_html)
-        return True
-    except Exception as e:
-        st.error(f"Erro ao enviar e-mail: {e}")
-        return False
     
 def conectar_drive():
     cred_dict = st.secrets["credentials"]
@@ -67,13 +62,26 @@ def conectar_drive():
     drive = GoogleDrive(gauth)
     return drive
         
-def enviar_email(destinatario, assunto, corpo_html):
+def enviar_email_outlook(destinatario, assunto, corpo_html):
     try:
-        yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
-        yag.send(to=destinatario, subject=assunto, contents=corpo_html)
+        remetente = st.secrets["email_user"]
+        senha = st.secrets["email_pass"]
+
+        msg = MIMEMultipart()
+        msg['From'] = remetente
+        msg['To'] = destinatario
+        msg['Subject'] = assunto
+        msg.attach(MIMEText(corpo_html, 'html'))
+
+        # Conecta ao servidor SMTP da Microsoft
+        with smtplib.SMTP('smtp.office365.com', 587) as server:
+            server.starttls()
+            server.login(remetente, senha)
+            server.send_message(msg)
+
         return True
     except Exception as e:
-        st.error(f"Erro ao enviar e-mail: {e}")
+        st.error(f"Erro ao enviar e-mail via Outlook: {e}")
         return False
 
 def upload_para_drive():
@@ -533,7 +541,7 @@ elif menu == "Cadastrar Follow-up":
                 """
     
                 if email:
-                    sucesso_envio = enviar_email_gmail(
+                    sucesso_envio = enviar_email_outlook(
                         destinatario=email,
                         assunto=f"[Follow-up] Nova Atribuição: {titulo}",
                         corpo_html=corpo
@@ -638,7 +646,7 @@ elif menu == "Enviar Evidências":
                 <p>Evidências armazenadas no Google Drive (pasta: <b>evidencias/indice_{idx}</b>).</p>
                 """
 
-                sucesso_envio = enviar_email(
+                sucesso_envio = enviar_email_outlook(
                     destinatario="cvieira@prio3.com.br",
                     assunto=f"[Evidência] Follow-up #{idx} - {linha['Titulo']}",
                     corpo_html=corpo
@@ -970,7 +978,6 @@ def enviar_emails_followups_vencidos():
         st.info("✅ Nenhum follow-up vencido identificado para envio.")
         return
 
-    # Agrupar por responsável
     responsaveis = df_vencidos["E-mail"].dropna().unique().tolist()
 
     for email in responsaveis:
@@ -987,7 +994,7 @@ def enviar_emails_followups_vencidos():
         """
 
         for _, row in df_resp.iterrows():
-            corpo += f"<tr><td>{row['Titulo']}</td><td>{row['Auditoria']}</td><td>{row['Plano de Acao']}</td><td>{row['Responsavel']}</td><td>{row['Prazo'].date()}</td><td>{row['Status']}</td></tr>"
+            corpo += f"<tr><td>{row['Titulo']}</td><td>{row['Auditoria']}</td><td>{row['Plano_de_Acao']}</td><td>{row['Responsavel']}</td><td>{row['Prazo'].date()}</td><td>{row['Status']}</td></tr>"
 
         corpo += """
         </table>
@@ -999,8 +1006,20 @@ def enviar_emails_followups_vencidos():
         """
 
         try:
-            yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
-            yag.send(to=email, subject="📌 Follow-ups vencidos - Auditoria Interna", contents=corpo)
+            remetente = st.secrets["email_user"]
+            senha = st.secrets["email_pass"]
+
+            msg = MIMEMultipart()
+            msg['From'] = remetente
+            msg['To'] = email
+            msg['Subject'] = "📌 Follow-ups vencidos - Auditoria Interna"
+            msg.attach(MIMEText(corpo, 'html'))
+
+            with smtplib.SMTP('smtp.office365.com', 587) as server:
+                server.starttls()
+                server.login(remetente, senha)
+                server.send_message(msg)
+
             st.success(f"📧 E-mail enviado para: {email}")
         except Exception as e:
             st.warning(f"Erro ao enviar para {email}: {e}")
@@ -1044,7 +1063,7 @@ def enviar_emails_followups_a_vencer():
         """
 
         for _, row in df_resp.iterrows():
-            corpo += f"<tr><td>{row['Titulo']}</td><td>{row['Auditoria']}</td><td>{row['Plano de Acao']}</td><td>{row['Responsavel']}</td><td>{row['Prazo'].date()}</td><td>{row['Status']}</td></tr>"
+            corpo += f"<tr><td>{row['Titulo']}</td><td>{row['Auditoria']}</td><td>{row['Plano_de_Acao']}</td><td>{row['Responsavel']}</td><td>{row['Prazo'].date()}</td><td>{row['Status']}</td></tr>"
 
         corpo += """
         </table>
@@ -1055,10 +1074,24 @@ def enviar_emails_followups_a_vencer():
         <p>Atenciosamente,<br>Time de Auditoria</p>
         """
 
-        sucesso = enviar_email(destinatario=email, assunto="⏳ Follow-ups próximos do vencimento", corpo_html=corpo)
-        if sucesso:
-            st.success(f"📧 E-mail enviado para: {email}")
+        try:
+            remetente = st.secrets["email_user"]
+            senha = st.secrets["email_pass"]
 
+            msg = MIMEMultipart()
+            msg['From'] = remetente
+            msg['To'] = email
+            msg['Subject'] = "⏳ Follow-ups próximos do vencimento"
+            msg.attach(MIMEText(corpo, 'html'))
+
+            with smtplib.SMTP('smtp.office365.com', 587) as server:
+                server.starttls()
+                server.login(remetente, senha)
+                server.send_message(msg)
+
+            st.success(f"📧 E-mail enviado para: {email}")
+        except Exception as e:
+            st.warning(f"Erro ao enviar para {email}: {e}")
 if st.session_state.username in admin_users:
     if st.sidebar.button("📅 Enviar lembrete de follow-ups a vencer"):
         enviar_emails_followups_a_vencer()
