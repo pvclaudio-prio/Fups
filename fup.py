@@ -1092,6 +1092,7 @@ def enviar_emails_followups_a_vencer():
             st.success(f"📧 E-mail enviado para: {email}")
         except Exception as e:
             st.warning(f"Erro ao enviar para {email}: {e}")
+            
 if st.session_state.username in admin_users:
     if st.sidebar.button("📅 Enviar lembrete de follow-ups a vencer"):
         enviar_emails_followups_a_vencer()
