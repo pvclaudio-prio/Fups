@@ -962,8 +962,8 @@ elif menu == "🔍 Chatbot FUP":
 def enviar_emails_followups_vencidos():
     df = carregar_followups()
     df.columns = df.columns.str.strip()
-
     df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
+
     df_vencidos = df[
         (df["Status"].str.lower() != "concluído") &
         (df["Prazo"] < pd.Timestamp.today())
@@ -973,20 +973,11 @@ def enviar_emails_followups_vencidos():
         st.info("✅ Nenhum follow-up vencido identificado para envio.")
         return
 
-    # 🔍 Normalizar e-mails
     df_vencidos["E-mail"] = df_vencidos["E-mail"].astype(str).str.strip().str.lower()
     responsaveis = df_vencidos["E-mail"].dropna().unique().tolist()
 
-    if not responsaveis:
-        st.warning("⚠️ Nenhum e-mail válido encontrado.")
-        return
-
-    enviados = []
-    erros = []
-
     for email in responsaveis:
         df_resp = df_vencidos[df_vencidos["E-mail"] == email]
-
         if df_resp.empty:
             continue
 
@@ -998,29 +989,25 @@ def enviar_emails_followups_vencidos():
         """
 
         for _, row in df_resp.iterrows():
-            corpo += f"<tr><td>{row['Titulo']}</td><td>{row['Auditoria']}</td><td>{row['Plano de Acao']}</td><td>{row['Responsavel']}</td><td>{row['Prazo'].date()}</td><td>{row['Status']}</td></tr>"
+            corpo += f"<tr><td>{row['Titulo']}</td><td>{row['Auditoria']}</td><td>{row['Plano_de_Acao']}</td><td>{row['Responsavel']}</td><td>{row['Prazo'].date()}</td><td>{row['Status']}</td></tr>"
 
         corpo += """
         </table>
         <p>Por favor, atualize os registros no sistema ou entre em contato com a Auditoria Interna.</p>
+        <p>Acesse o aplicativo para incluir evidências e acompanhar o andamento:</p>
         <p><a href='https://fup-auditoria.streamlit.app/' target='_blank'>🔗 fup-auditoria.streamlit.app</a></p>
         <br>
         <p>Atenciosamente,<br>Time de Auditoria</p>
         """
 
-        try:
-            yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
-            yag.send(to=email, subject="📌 Follow-ups vencidos - Auditoria Interna", contents=corpo)
-            enviados.append(email)
-        except Exception as e:
-            erros.append((email, str(e)))
+        sucesso = enviar_email(
+            destinatario=email,
+            assunto="📌 Follow-ups vencidos - Auditoria Interna",
+            corpo_html=corpo
+        )
+        if sucesso:
+            st.success(f"📧 E-mail enviado para: {email}")
 
-    # ✅ Feedback final
-    if enviados:
-        st.success(f"📤 E-mails enviados para: {', '.join(enviados)}")
-    if erros:
-        for email, err in erros:
-            st.error(f"❌ Falha ao enviar para {email}: {err}")
 
 # 🔁 Botão para envio manual
 
