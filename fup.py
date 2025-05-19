@@ -318,9 +318,9 @@ elif menu == "Meus Follow-ups":
             df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
             
         df["Prazo"] = pd.to_datetime(df["Prazo"], format = "mixed", errors="coerce")
-        df["Prazo"] = df["Prazo"].dt.strftime("%d/%m/%Y")
+        #df["Prazo"] = df["Prazo"].dt.strftime("%d/%m/%Y")
         df["Data de Conclusão"] = pd.to_datetime(df["Data de Conclusão"], format = "mixed", errors="coerce")
-        df["Data de Conclusão"] = df["Data de Conclusão"].dt.strftime("%d/%m/%Y")
+        #df["Data de Conclusão"] = df["Data de Conclusão"].dt.strftime("%d/%m/%Y")
         df["Ano"] = df["Ano"].astype(str)
 
         # --- Filtros na sidebar ---
