@@ -971,11 +971,13 @@ elif menu == "🔍 Chatbot FUP":
 def enviar_emails_followups_vencidos():
     df = carregar_followups()
     df.columns = df.columns.str.strip()
-    df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
+    df["Prazo"] = df["Prazo"].dt.normalize()
+    hoje = pd.Timestamp.today().normalize()
 
     df_vencidos = df[
         (df["Status"].str.lower() != "concluído") &
-        (df["Prazo"].dt.date < date.today())]
+        (df["Prazo"] <= hoje)
+    ]
 
     if df_vencidos.empty:
         st.info("✅ Nenhum follow-up vencido identificado para envio.")
@@ -1100,3 +1102,6 @@ def enviar_emails_followups_a_vencer():
 if st.session_state.username in admin_users:
     if st.sidebar.button("📅 Enviar lembrete de follow-ups a vencer"):
         enviar_emails_followups_a_vencer()
+        
+st.write("Hoje:", pd.Timestamp.today())
+st.write("Prazo (amostra):", df["Prazo"].sort_values().head(10))
