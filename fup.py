@@ -964,58 +964,6 @@ def enviar_emails_followups_vencidos():
     df.columns = df.columns.str.strip()
 
     df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
-    df_vencidos = df[(df["Status"].str.lower() != "concluído") & (df["Prazo"] < pd.Timestamp.today())]
-
-    if df_vencidos.empty:
-        st.info("✅ Nenhum follow-up vencido identificado para envio.")
-        return
-
-    # Agrupar por responsável
-    responsaveis = df_vencidos["E-mail"].dropna().unique().tolist()
-
-    for email in responsaveis:
-        df_resp = df_vencidos[df_vencidos["E-mail"] == email]
-
-        if df_resp.empty:
-            continue
-
-        corpo = f"""
-        <p>Olá,</p>
-        <p>Você possui os seguintes follow-ups vencidos:</p>
-        <table border='1' cellpadding='4' cellspacing='0'>
-            <tr><th>Título</th><th>Auditoria</th><th>Plano de Ação</th><th>Responsável</th><th>Prazo</th><th>Status</th></tr>
-        """
-
-        for _, row in df_resp.iterrows():
-            corpo += f"<tr><td>{row['Titulo']}</td><td>{row['Auditoria']}</td><td>{row['Plano de Acao']}</td><td>{row['Responsavel']}</td><td>{row['Prazo'].date()}</td><td>{row['Status']}</td></tr>"
-
-        corpo += """
-        </table>
-        <p>Por favor, atualize os registros no sistema ou entre em contato com a Auditoria Interna.</p>
-        <p>Acesse o aplicativo para incluir evidências e acompanhar o andamento:</p>
-        <p><a href='https://fup-auditoria.streamlit.app/' target='_blank'>🔗 fup-auditoria.streamlit.app</a></p>
-        <br>
-        <p>Atenciosamente,<br>Time de Auditoria</p>
-        """
-
-        try:
-            yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
-            yag.send(to=email, subject="📌 Follow-ups vencidos - Auditoria Interna", contents=corpo)
-            st.success(f"📧 E-mail enviado para: {email}")
-        except Exception as e:
-            st.warning(f"Erro ao enviar para {email}: {e}")
-
-# 🔁 Botão para envio manual
-
-if st.session_state.username in admin_users:
-    if st.sidebar.button("✉️ Enviar lembrete de follow-ups vencidos"):
-        enviar_emails_followups_vencidos()
-#-------------------------------------------------------------------- e-mail de follow ups a vencer
-def enviar_emails_followups_vencidos():
-    df = carregar_followups()
-    df.columns = df.columns.str.strip()
-
-    df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
     df_vencidos = df[
         (df["Status"].str.lower() != "concluído") &
         (df["Prazo"] < pd.Timestamp.today())
@@ -1074,6 +1022,61 @@ def enviar_emails_followups_vencidos():
         for email, err in erros:
             st.error(f"❌ Falha ao enviar para {email}: {err}")
 
+# 🔁 Botão para envio manual
+
+if st.session_state.username in admin_users:
+    if st.sidebar.button("✉️ Enviar lembrete de follow-ups vencidos"):
+        enviar_emails_followups_vencidos()
+#-------------------------------------------------------------------- e-mail de follow ups a vencer
+def enviar_emails_followups_a_vencer():
+    df = carregar_followups()
+    df.columns = df.columns.str.strip()
+    df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
+
+    hoje = pd.Timestamp.today()
+    limite = hoje + timedelta(days=30)
+
+    df_a_vencer = df[
+        (df["Status"].str.lower() != "concluído") &
+        (df["Prazo"] >= hoje) &
+        (df["Prazo"] <= limite)
+    ]
+
+    if df_a_vencer.empty:
+        st.info("✅ Nenhum follow-up com prazo a vencer em 30 dias.")
+        return
+
+    responsaveis = df_a_vencer["E-mail"].dropna().unique().tolist()
+
+    for email in responsaveis:
+        df_resp = df_a_vencer[df_a_vencer["E-mail"] == email]
+        if df_resp.empty:
+            continue
+
+        corpo = f"""
+        <p>Olá,</p>
+        <p>Você possui os seguintes follow-ups com prazo a vencer em até 30 dias:</p>
+        <table border='1' cellpadding='4' cellspacing='0'>
+            <tr><th>Título</th><th>Auditoria</th><th>Plano de Ação</th><th>Responsável</th><th>Prazo</th><th>Status</th></tr>
+        """
+
+        for _, row in df_resp.iterrows():
+            corpo += f"<tr><td>{row['Titulo']}</td><td>{row['Auditoria']}</td><td>{row['Plano de Acao']}</td><td>{row['Responsavel']}</td><td>{row['Prazo'].date()}</td><td>{row['Status']}</td></tr>"
+
+        corpo += """
+        </table>
+        <p>Por favor, antecipe ações necessárias e atualize o status no sistema.</p>
+        <p>Acesse o aplicativo para mais detalhes:</p>
+        <p><a href='https://fup-auditoria.streamlit.app/' target='_blank'>🔗 fup-auditoria.streamlit.app</a></p>
+        <br>
+        <p>Atenciosamente,<br>Time de Auditoria</p>
+        """
+
+        sucesso = enviar_email(destinatario=email, assunto="⏳ Follow-ups próximos do vencimento", corpo_html=corpo)
+        if sucesso:
+            st.success(f"📧 E-mail enviado para: {email}")
+
 if st.session_state.username in admin_users:
     if st.sidebar.button("📅 Enviar lembrete de follow-ups a vencer"):
         enviar_emails_followups_a_vencer()
+
