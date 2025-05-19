@@ -291,7 +291,8 @@ if menu == "Dashboard":
         st.subheader("📅 Follow-ups por Ano")
         ano_counts = df["Ano"].value_counts().sort_index().reset_index()
         ano_counts.columns = ["Ano", "Quantidade"]
-        ano_counts["Ano"] = left(ano_counts["Ano"],4)
+        ano_counts["Ano"] = ano_counts["Ano"].astype(str).str[:4]
+
         fig_ano = px.line(
             ano_counts,
             x="Ano",
