@@ -994,7 +994,7 @@ def enviar_emails_followups_vencidos():
         """
 
         for _, row in df_resp.iterrows():
-            corpo += f"<tr><td>{row['Titulo']}</td><td>{row['Auditoria']}</td><td>{row['Plano_de_Acao']}</td><td>{row['Responsavel']}</td><td>{row['Prazo'].date()}</td><td>{row['Status']}</td></tr>"
+            corpo += f"<tr><td>{row['Titulo']}</td><td>{row['Auditoria']}</td><td>{row['Plano de Acao']}</td><td>{row['Responsavel']}</td><td>{row['Prazo'].date()}</td><td>{row['Status']}</td></tr>"
 
         corpo += """
         </table>
@@ -1063,7 +1063,7 @@ def enviar_emails_followups_a_vencer():
         """
 
         for _, row in df_resp.iterrows():
-            corpo += f"<tr><td>{row['Titulo']}</td><td>{row['Auditoria']}</td><td>{row['Plano_de_Acao']}</td><td>{row['Responsavel']}</td><td>{row['Prazo'].date()}</td><td>{row['Status']}</td></tr>"
+            corpo += f"<tr><td>{row['Titulo']}</td><td>{row['Auditoria']}</td><td>{row['Plano de Acao']}</td><td>{row['Responsavel']}</td><td>{row['Prazo'].date()}</td><td>{row['Status']}</td></tr>"
 
         corpo += """
         </table>
