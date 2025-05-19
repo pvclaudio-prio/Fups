@@ -300,8 +300,8 @@ if menu == "Dashboard":
         )
         st.plotly_chart(fig_ano, use_container_width=True)
 
-except Exception as e:
-    st.error(f"Erro ao acessar dados do Google Drive: {e}")
+    except Exception as e:
+        st.error(f"Erro ao acessar dados do Google Drive: {e}")
 
 elif menu == "Meus Follow-ups":
     st.title("📁 Meus Follow-ups")
