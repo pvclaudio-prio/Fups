@@ -298,6 +298,7 @@ if menu == "Dashboard":
             markers=True,
             title="Evolução de Follow-ups por Ano"
         )
+        fig_ano.update_layout(xaxis=dict(tickformat=".0f"))
         st.plotly_chart(fig_ano, use_container_width=True)
 
     except Exception as e:
