@@ -250,7 +250,7 @@ if menu == "Dashboard":
             st.stop()
     
         df["Prazo"] = pd.to_datetime(df["Prazo"], format="mixed", errors="coerce")
-        df["Ano"] = df["Ano"].astype(str)
+        df["Ano"] = df["Ano"].astype(int)
         df["Status"] = df["Status"].fillna("Não informado")
     
         # --- KPIs principais ---
