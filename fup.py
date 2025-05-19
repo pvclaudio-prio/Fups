@@ -985,9 +985,9 @@ def enviar_emails_followups_vencidos():
         st.info("✅ Nenhum follow-up vencido identificado para envio.")
         return
 
-    responsaveis = df_vencidos["E-mail"].dropna().unique().tolist()
+    responsaveis_vencidos = df_vencidos["E-mail"].dropna().unique().tolist()
 
-    for email in responsaveis:
+    for email in responsaveis_vencidos:
         df_resp = df_vencidos[df_vencidos["E-mail"] == email]
 
         if df_resp.empty:
@@ -1055,9 +1055,9 @@ def enviar_emails_followups_a_vencer():
         st.info("✅ Nenhum follow-up com prazo a vencer em 30 dias.")
         return
 
-    responsaveis = df_a_vencer["E-mail"].dropna().unique().tolist()
+    responsaveis_vencer = df_a_vencer["E-mail"].dropna().unique().tolist()
 
-    for email in responsaveis:
+    for email in responsaveis_vencer:
         df_resp = df_a_vencer[df_a_vencer["E-mail"] == email]
         if df_resp.empty:
             continue
