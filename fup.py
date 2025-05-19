@@ -316,7 +316,7 @@ elif menu == "Meus Follow-ups":
 
         if usuario_logado not in admin_users:
             df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
-        df["Prazo"] = pd.to_datetime(df["Prazo"],format="%Y-%m-%d", errors="coerce")
+        df["Prazo"] = pd.to_datetime(df["Prazo"])
         df["Ano"] = df["Ano"].astype(str)
 
         # --- Filtros na sidebar ---
