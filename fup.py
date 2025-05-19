@@ -962,22 +962,20 @@ elif menu == "🔍 Chatbot FUP":
 def enviar_emails_followups_vencidos():
     df = carregar_followups()
     df.columns = df.columns.str.strip()
-    df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
 
-    df_vencidos = df[
-        (df["Status"].str.lower() != "concluído") &
-        (df["Prazo"] < pd.Timestamp.today())
-    ]
+    df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
+    df_vencidos = df[(df["Status"].str.lower() != "concluído") & (df["Prazo"] < pd.Timestamp.today())]
 
     if df_vencidos.empty:
         st.info("✅ Nenhum follow-up vencido identificado para envio.")
         return
 
-    df_vencidos["E-mail"] = df_vencidos["E-mail"].astype(str).str.strip().str.lower()
+    # Agrupar por responsável
     responsaveis = df_vencidos["E-mail"].dropna().unique().tolist()
 
     for email in responsaveis:
         df_resp = df_vencidos[df_vencidos["E-mail"] == email]
+
         if df_resp.empty:
             continue
 
@@ -1000,14 +998,12 @@ def enviar_emails_followups_vencidos():
         <p>Atenciosamente,<br>Time de Auditoria</p>
         """
 
-        sucesso = enviar_email(
-            destinatario=email,
-            assunto="📌 Follow-ups vencidos - Auditoria Interna",
-            corpo_html=corpo
-        )
-        if sucesso:
+        try:
+            yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
+            yag.send(to=email, subject="📌 Follow-ups vencidos - Auditoria Interna", contents=corpo)
             st.success(f"📧 E-mail enviado para: {email}")
-
+        except Exception as e:
+            st.warning(f"Erro ao enviar para {email}: {e}")
 
 # 🔁 Botão para envio manual
 
@@ -1066,4 +1062,3 @@ def enviar_emails_followups_a_vencer():
 if st.session_state.username in admin_users:
     if st.sidebar.button("📅 Enviar lembrete de follow-ups a vencer"):
         enviar_emails_followups_a_vencer()
-
