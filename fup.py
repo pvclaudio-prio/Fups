@@ -289,6 +289,7 @@ if menu == "Dashboard":
         st.plotly_chart(fig_auditoria, use_container_width=True)
     
         st.subheader("📅 Follow-ups por Ano")
+        st.write(list(df["Ano"])
         ano_counts = df["Ano"].value_counts().sort_index().reset_index()
         ano_counts.columns = ["Ano", "Quantidade"]
         fig_ano = px.line(
