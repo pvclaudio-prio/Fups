@@ -523,6 +523,7 @@ elif menu == "Cadastrar Follow-up":
                 <ul>
                     <li><b>Título:</b> {titulo}</li>
                     <li><b>Auditoria:</b> {auditoria}</li>
+                    <li><b>Plano de Acao:</b> {plano}</li>
                     <li><b>Prazo:</b> {prazo.strftime('%d/%m/%Y')}</li>
                     <li><b>Status:</b> {status}</li>
                 </ul>
@@ -638,8 +639,10 @@ elif menu == "Enviar Evidências":
                 <p>Evidências armazenadas no Google Drive (pasta: <b>evidencias/indice_{idx}</b>).</p>
                 """
 
+                destinatarios_evidencias = ["cvieira@prio3.com.br","mathayde@prio3.com.br"]
+                
                 sucesso_envio = enviar_email(
-                    destinatario="cvieira@prio3.com.br",
+                    destinatario=destinatarios_evidencias,
                     assunto=f"[Evidência] Follow-up #{idx} - {linha['Titulo']}",
                     corpo_html=corpo
                 )
