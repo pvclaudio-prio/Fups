@@ -306,6 +306,8 @@ if menu == "Dashboard":
             markers=True,
             title="Evolução de Follow-ups por Ano"
         )
+        fig_ano.update_xaxes(type='category')
+        
         st.plotly_chart(fig_ano, use_container_width=True)
         st.dataframe(ano_counts, use_container_width=True)
 
