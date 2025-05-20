@@ -295,6 +295,7 @@ if menu == "Dashboard":
         st.subheader("📅 Follow-ups por Ano")
         ano_counts = df["Ano"].value_counts().sort_index().reset_index()
         ano_counts.columns = ["Ano", "Quantidade"]
+        ano_counts["Ano"] = ano_counts["Ano"].astype(str)
         anos_existentes = ano_counts["Ano"].tolist()
         ano_counts["Ano"] = pd.Categorical(ano_counts["Ano"], categories=anos_existentes, ordered=True)
         
