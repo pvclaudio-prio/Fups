@@ -293,6 +293,7 @@ if menu == "Dashboard":
         st.subheader("📅 Follow-ups por Ano")
         ano_counts = df["Ano"].value_counts().sort_index().reset_index()
         ano_counts.columns = ["Ano", "Quantidade"]
+        ano_counts["Ano"] = ano_counts[ano_counts["Ano"].isin(["2020","2021","2022","2023","2024","2025","2026","2027","2028","2029","2030")]
         fig_ano = px.line(
             ano_counts,
             x="Ano",
