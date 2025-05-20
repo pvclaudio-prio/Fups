@@ -282,6 +282,9 @@ if menu == "Dashboard":
         st.subheader("📁 Follow-ups por Auditoria")
         auditoria_counts = df["Auditoria"].value_counts().reset_index()
         auditoria_counts.columns = ["Auditoria", "Quantidade"]
+        anos_existentes = ano_counts["Ano"].tolist()
+        ano_counts["Ano"] = pd.Categorical(ano_counts["Ano"], categories=anos_existentes, ordered=True)
+
         fig_auditoria = px.bar(
             auditoria_counts,
             x="Auditoria",
