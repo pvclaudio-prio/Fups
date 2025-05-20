@@ -291,10 +291,10 @@ if menu == "Dashboard":
         st.plotly_chart(fig_auditoria, use_container_width=True)
     
         st.subheader("📅 Follow-ups por Ano")
+        anos_validos = ["2020","2021","2022","2023","2024","2025","2026","2027","2028","2029","2030"]
+        df = df[df["Ano"].isin(anos_validos)]
         ano_counts = df["Ano"].value_counts().sort_index().reset_index()
         ano_counts.columns = ["Ano", "Quantidade"]
-        anos_validos = ["2020","2021","2022","2023","2024","2025","2026","2027","2028","2029","2030"]
-        ano_counts = ano_counts[ano_counts["Ano"].isin(anos_validos)]
         
         fig_ano = px.line(
             ano_counts,
