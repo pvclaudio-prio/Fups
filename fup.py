@@ -1104,3 +1104,10 @@ if st.session_state.username in admin_users:
     if st.sidebar.button("📅 Enviar lembrete de follow-ups a vencer"):
         enviar_emails_followups_a_vencer()
         
+import requests
+
+try:
+    ip = requests.get('https://api.ipify.org').text
+    st.info(f"🌐 IP público do servidor: {ip}")
+except Exception as e:
+    st.warning(f"Erro ao obter IP: {e}")
