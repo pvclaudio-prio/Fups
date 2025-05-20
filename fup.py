@@ -309,7 +309,6 @@ if menu == "Dashboard":
         fig_ano.update_xaxes(type='category')
         
         st.plotly_chart(fig_ano, use_container_width=True)
-        st.dataframe(ano_counts, use_container_width=True)
 
     except Exception as e:
         st.error(f"Erro ao acessar dados do Google Drive: {e}")
