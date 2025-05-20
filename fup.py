@@ -69,15 +69,6 @@ def conectar_drive():
     gauth.credentials = credentials
     drive = GoogleDrive(gauth)
     return drive
-        
-def enviar_email(destinatario, assunto, corpo_html):
-    try:
-        yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
-        yag.send(to=destinatario, subject=assunto, contents=corpo_html)
-        return True
-    except Exception as e:
-        st.error(f"Erro ao enviar e-mail: {e}")
-        return False
 
 def upload_para_drive():
     try:
@@ -649,7 +640,7 @@ elif menu == "Enviar Evidências":
 
                 destinatarios_evidencias = ["cvieira@prio3.com.br","mathayde@prio3.com.br"]
                 
-                sucesso_envio = enviar_email(
+                sucesso_envio = enviar_email_gmail(
                     destinatario=destinatarios_evidencias,
                     assunto=f"[Evidência] Follow-up #{idx} - {linha['Titulo']}",
                     corpo_html=corpo
@@ -1072,7 +1063,7 @@ def enviar_emails_followups_a_vencer():
         <p>Atenciosamente,<br>Time de Auditoria</p>
         """
 
-        sucesso = enviar_email(destinatario=email, assunto="⏳ Follow-ups próximos do vencimento", corpo_html=corpo)
+        sucesso = enviar_email_gmail(destinatario=email, assunto="⏳ Follow-ups próximos do vencimento", corpo_html=corpo)
         if sucesso:
             st.success(f"📧 E-mail enviado para: {email}")
 
