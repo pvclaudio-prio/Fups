@@ -25,20 +25,24 @@ import tempfile
 from difflib import get_close_matches
 import re
 from datetime import timedelta
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from datetime import date
 
 st.set_page_config(layout = 'wide')
 
 #st.sidebar.text(f"Diretório atual: {os.getcwd()}")
-st.write("Hoje:", pd.Timestamp.today())
 
 caminho_csv = "followups.csv"
 admin_users = ["cvieira", "amendonca", "mathayde"]
 cadastro_users = ["cvieira", "amendonca", "mathayde"]
 chat_users = ["cvieira", "amendonca", "mathayde","bromanelli","ysouza"]
+
+def enviar_email_gmail(destinatario, assunto, corpo_html):
+    try:
+        yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
+        yag.send(to=destinatario, subject=assunto, contents=corpo_html)
+        return True
+    except Exception as e:
+        st.error(f"Erro ao enviar e-mail: {e}")
+        return False
     
 def conectar_drive():
     cred_dict = st.secrets["credentials"]
@@ -63,26 +67,13 @@ def conectar_drive():
     drive = GoogleDrive(gauth)
     return drive
         
-def enviar_email_outlook(destinatario, assunto, corpo_html):
+def enviar_email(destinatario, assunto, corpo_html):
     try:
-        remetente = st.secrets["email_user"]
-        senha = st.secrets["email_pass"]
-
-        msg = MIMEMultipart()
-        msg['From'] = remetente
-        msg['To'] = destinatario
-        msg['Subject'] = assunto
-        msg.attach(MIMEText(corpo_html, 'html'))
-
-        # Conecta ao servidor SMTP da Microsoft
-        with smtplib.SMTP('smtp.office365.com', 587) as server:
-            server.starttls()
-            server.login(remetente, senha)
-            server.send_message(msg)
-
+        yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
+        yag.send(to=destinatario, subject=assunto, contents=corpo_html)
         return True
     except Exception as e:
-        st.error(f"Erro ao enviar e-mail via Outlook: {e}")
+        st.error(f"Erro ao enviar e-mail: {e}")
         return False
 
 def upload_para_drive():
@@ -300,7 +291,6 @@ if menu == "Dashboard":
         st.subheader("📅 Follow-ups por Ano")
         ano_counts = df["Ano"].value_counts().sort_index().reset_index()
         ano_counts.columns = ["Ano", "Quantidade"]
-
         fig_ano = px.line(
             ano_counts,
             x="Ano",
@@ -308,7 +298,6 @@ if menu == "Dashboard":
             markers=True,
             title="Evolução de Follow-ups por Ano"
         )
-        fig_ano.update_layout(xaxis=dict(tickformat=".0f"))
         st.plotly_chart(fig_ano, use_container_width=True)
 
     except Exception as e:
@@ -542,7 +531,7 @@ elif menu == "Cadastrar Follow-up":
                 """
     
                 if email:
-                    sucesso_envio = enviar_email_outlook(
+                    sucesso_envio = enviar_email_gmail(
                         destinatario=email,
                         assunto=f"[Follow-up] Nova Atribuição: {titulo}",
                         corpo_html=corpo
@@ -647,7 +636,7 @@ elif menu == "Enviar Evidências":
                 <p>Evidências armazenadas no Google Drive (pasta: <b>evidencias/indice_{idx}</b>).</p>
                 """
 
-                sucesso_envio = enviar_email_outlook(
+                sucesso_envio = enviar_email(
                     destinatario="cvieira@prio3.com.br",
                     assunto=f"[Evidência] Follow-up #{idx} - {linha['Titulo']}",
                     corpo_html=corpo
@@ -971,22 +960,24 @@ elif menu == "🔍 Chatbot FUP":
 def enviar_emails_followups_vencidos():
     df = carregar_followups()
     df.columns = df.columns.str.strip()
+
     df["Prazo"] = pd.to_datetime(df["Prazo"], format="mixed", errors="coerce")
     df["Prazo"] = df["Prazo"].dt.normalize()
     hoje = pd.Timestamp.today().normalize()
 
     df_vencidos = df[
         (df["Status"].str.lower() != "concluído") &
-        (df["Prazo"] <= hoje)
+        (df["Prazo"] < hoje)
     ]
 
     if df_vencidos.empty:
         st.info("✅ Nenhum follow-up vencido identificado para envio.")
         return
 
-    responsaveis_vencidos = df_vencidos["E-mail"].dropna().unique().tolist()
+    # Agrupar por responsável
+    responsaveis = df_vencidos["E-mail"].dropna().unique().tolist()
 
-    for email in responsaveis_vencidos:
+    for email in responsaveis:
         df_resp = df_vencidos[df_vencidos["E-mail"] == email]
 
         if df_resp.empty:
@@ -1012,20 +1003,8 @@ def enviar_emails_followups_vencidos():
         """
 
         try:
-            remetente = st.secrets["email_user"]
-            senha = st.secrets["email_pass"]
-
-            msg = MIMEMultipart()
-            msg['From'] = remetente
-            msg['To'] = email
-            msg['Subject'] = "📌 Follow-ups vencidos - Auditoria Interna"
-            msg.attach(MIMEText(corpo, 'html'))
-
-            with smtplib.SMTP('smtp.office365.com', 587) as server:
-                server.starttls()
-                server.login(remetente, senha)
-                server.send_message(msg)
-
+            yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
+            yag.send(to=email, subject="📌 Follow-ups vencidos - Auditoria Interna", contents=corpo)
             st.success(f"📧 E-mail enviado para: {email}")
         except Exception as e:
             st.warning(f"Erro ao enviar para {email}: {e}")
@@ -1035,12 +1014,11 @@ def enviar_emails_followups_vencidos():
 if st.session_state.username in admin_users:
     if st.sidebar.button("✉️ Enviar lembrete de follow-ups vencidos"):
         enviar_emails_followups_vencidos()
-
 #-------------------------------------------------------------------- e-mail de follow ups a vencer
 def enviar_emails_followups_a_vencer():
     df = carregar_followups()
     df.columns = df.columns.str.strip()
-    df["Prazo"] = pd.to_datetime(df["Prazo"], format="mixed", errors="coerce")
+    df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
 
     hoje = pd.Timestamp.today()
     limite = hoje + timedelta(days=30)
@@ -1055,9 +1033,9 @@ def enviar_emails_followups_a_vencer():
         st.info("✅ Nenhum follow-up com prazo a vencer em 30 dias.")
         return
 
-    responsaveis_vencer = df_a_vencer["E-mail"].dropna().unique().tolist()
+    responsaveis = df_a_vencer["E-mail"].dropna().unique().tolist()
 
-    for email in responsaveis_vencer:
+    for email in responsaveis:
         df_resp = df_a_vencer[df_a_vencer["E-mail"] == email]
         if df_resp.empty:
             continue
@@ -1081,26 +1059,10 @@ def enviar_emails_followups_a_vencer():
         <p>Atenciosamente,<br>Time de Auditoria</p>
         """
 
-        try:
-            remetente = st.secrets["email_user"]
-            senha = st.secrets["email_pass"]
-
-            msg = MIMEMultipart()
-            msg['From'] = remetente
-            msg['To'] = email
-            msg['Subject'] = "⏳ Follow-ups próximos do vencimento"
-            msg.attach(MIMEText(corpo, 'html'))
-
-            with smtplib.SMTP('smtp.office365.com', 587) as server:
-                server.starttls()
-                server.login(remetente, senha)
-                server.send_message(msg)
-
+        sucesso = enviar_email(destinatario=email, assunto="⏳ Follow-ups próximos do vencimento", corpo_html=corpo)
+        if sucesso:
             st.success(f"📧 E-mail enviado para: {email}")
-        except Exception as e:
-            st.warning(f"Erro ao enviar para {email}: {e}")
-            
+
 if st.session_state.username in admin_users:
     if st.sidebar.button("📅 Enviar lembrete de follow-ups a vencer"):
         enviar_emails_followups_a_vencer()
-        
