@@ -25,6 +25,7 @@ import tempfile
 from difflib import get_close_matches
 import re
 from datetime import timedelta
+import matplotlib.pyplot as plt
 
 st.set_page_config(layout = 'wide')
 
@@ -305,6 +306,16 @@ if menu == "Dashboard":
             title="Evolução de Follow-ups por Ano"
         )
         st.plotly_chart(fig_ano, use_container_width=True)
+
+        fig, ax = plt.subplots()
+        ax.plot(ano_counts["Ano"], ano_counts["Quantidade"], marker='o', linestyle='-')
+        ax.set_title("Evolução de Follow-ups por Ano")
+        ax.set_xlabel("Ano")
+        ax.set_ylabel("Quantidade")
+        ax.grid(True)
+        
+        st.pyplot(fig)
+
         st.dataframe(ano_counts, use_container_width=True)
 
     except Exception as e:
