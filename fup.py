@@ -28,6 +28,8 @@ from datetime import timedelta
 
 st.set_page_config(layout = 'wide')
 
+st.write("Hoje:", pd.Timestamp.today())
+
 #st.sidebar.text(f"Diretório atual: {os.getcwd()}")
 
 caminho_csv = "followups.csv"
