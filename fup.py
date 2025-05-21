@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date
-#import yagmail
+import yagmail
 from io import BytesIO
 from pathlib import Path
 import plotly.express as px
