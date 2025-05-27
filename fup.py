@@ -323,6 +323,7 @@ elif menu == "Meus Follow-ups":
         df["Data de Conclusão"] = pd.to_datetime(df["Data de Conclusão"], format = "mixed", errors="coerce")
         #df["Data de Conclusão"] = df["Data de Conclusão"].dt.strftime("%d/%m/%Y")
         df["Ano"] = df["Ano"].astype(str)
+        df["Ambiente"] = df["Ambiente"].str.lower()
 
         # --- Filtros na sidebar ---
         st.sidebar.subheader("Filtros de Pesquisa")
@@ -333,7 +334,7 @@ elif menu == "Meus Follow-ups":
         auditorias = ["Todos"] + sorted(df["Auditoria"].dropna().unique().tolist())
         auditoria_selecionada = st.sidebar.selectbox("Auditoria", auditorias)
 
-        status_lista = ["Todos"] + sorted(df["Status"].str.low().dropna().unique().tolist())
+        status_lista = ["Todos"] + sorted(df["Status"].dropna().unique().tolist())
         status_selecionado = st.sidebar.selectbox("Status", status_lista)
 
         status_ambiente = ["Todos"] + sorted(df["Ambiente"].dropna().unique().tolist())
