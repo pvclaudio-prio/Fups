@@ -363,6 +363,7 @@ elif menu == "Meus Follow-ups":
         df = df.sort_values(by="Prazo")
 
         if not df.empty:
+            df["Ambiente"] = df["Ambiente"].lower()
             st.dataframe(df, use_container_width=True)
             st.success(f"Total Follow Ups: {len(df)}")
 
