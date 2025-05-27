@@ -333,7 +333,7 @@ elif menu == "Meus Follow-ups":
         auditorias = ["Todos"] + sorted(df["Auditoria"].dropna().unique().tolist())
         auditoria_selecionada = st.sidebar.selectbox("Auditoria", auditorias)
 
-        status_lista = ["Todos"] + sorted(df["Status"].dropna().unique().tolist())
+        status_lista = ["Todos"] + sorted(df["Status"].str.low().dropna().unique().tolist())
         status_selecionado = st.sidebar.selectbox("Status", status_lista)
 
         status_ambiente = ["Todos"] + sorted(df["Ambiente"].dropna().unique().tolist())
