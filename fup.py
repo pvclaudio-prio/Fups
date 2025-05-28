@@ -155,6 +155,30 @@ def carregar_followups():
 
     return df
 
+def aplicar_filtros_df(df, pergunta):
+    filtros = {}
+    valores_unicos = {}
+
+    for col in df.select_dtypes(include="object").columns:
+        valores_unicos[col] = df[col].astype(str).str.lower().str.strip().unique().tolist()
+
+    tokens = re.findall(r"\w+", pergunta.lower())
+
+    for token in tokens:
+        for col, valores in valores_unicos.items():
+            match = get_close_matches(token, valores, n=1, cutoff=0.8)
+            if match:
+                filtros[col] = match[0]
+                break
+
+    df_filtrado = df.copy()
+
+    for col, valor in filtros.items():
+        df_filtrado[col] = df_filtrado[col].astype(str).str.lower().str.strip()
+        df_filtrado = df_filtrado[df_filtrado[col].str.contains(valor)]
+
+    return df_filtrado, filtros
+
 # --- Usuários e autenticação simples ---
 @st.cache_data
 def carregar_usuarios():
@@ -760,79 +784,71 @@ elif menu == "Visualizar Evidências":
 elif menu == "🔍 Chatbot FUP":
 
     st.title("🤖 Chatbot dos Relatórios de Auditoria")
-
+    
     usuario_logado = st.session_state.username
     nome_usuario = users[usuario_logado]["name"]
-
-    @st.cache_data
-    def carregar_followups():
-        drive = conectar_drive()
-        arquivos = drive.ListFile({
-            'q': "title = 'followups.csv' and trashed=false"
-        }).GetList()
-        if not arquivos:
-            return pd.DataFrame()
-        caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
-        arquivos[0].GetContentFile(caminho_temp)
-        return pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
-
+    
     df = carregar_followups()
-
     if df.empty:
         st.warning("Nenhum dado disponível.")
         st.stop()
-
+    
     if usuario_logado not in admin_users:
         df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
-
-    dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
-
-    # 🔧 Estado
+    
+    st.markdown("### 📝 Digite sua pergunta sobre os follow-ups:")
+    pergunta = st.text_input(
+        "Ex: Quais são os principais riscos dos meus follow-ups? Ou: Me mostre os pontos críticos no ambiente SAP.",
+        key="pergunta_fup"
+    )
+    
     if 'executar_analise' not in st.session_state:
         st.session_state.executar_analise = False
     if 'executar_consultor' not in st.session_state:
         st.session_state.executar_consultor = False
-
-    # 🔹 Pergunta do usuário
-    st.markdown("### 📝 Digite sua pergunta sobre os follow-ups:")
-    pergunta = st.text_input(
-        "Ex: Quais são os principais riscos dos meus follow-ups? Ou: Mostre os pontos críticos.",
-        key="pergunta_fup"
-    )
-
+    
     # 🔘 Botão da análise executiva
     if st.button("📨 Executar Análise"):
         st.session_state.executar_analise = True
         st.session_state.executar_consultor = False
-
+    
     if st.session_state.executar_analise:
-        st.subheader("💡 Resultado da Análise Executiva")
-
-        # 🔥 Prompt Agente 1
+        df_filtrado, filtros = aplicar_filtros_df(df, pergunta)
+    
+        dados_filtrados = df_filtrado.fillna("").astype(str).to_markdown(index=False) if not df_filtrado.empty else "Nenhum follow-up encontrado."
+        dados_completo = df.fillna("").astype(str).to_markdown(index=False)
+    
         system_prompt = f"""
-Você é um especialista sênior em Auditoria, Riscos, Controles e Governança, com domínio dos frameworks COSO, COBIT, NIST, ISO 27001, ITIL e PMBOK.
-
-### 🎯 Sua missão:
-1. Gerar um **Sumário Executivo**, contendo:
-   - Resumo dos follow-ups encontrados.
-   - Principais riscos, atrasos, temas críticos e falhas de controle.
-   - Distribuição por ambiente, ano, risco, status.
-   - Aplicar frameworks de boas práticas (ex.: COBIT - Gestão de Acessos, NIST - Monitoramento, ISO 27001 - Segurança da Informação).
-   - Destaque onde estão os principais pontos de atenção.
-
-2. Na sequência, apresente:
-   - A lista de follow-ups encontrados com breve descrição, status e riscos.
-
----
-
-### 🔍 Base de dados:
-{dados_markdown}
-
----
-
-🛑 Seja técnico, objetivo, claro e alinhado às melhores práticas de auditoria interna.
-"""
-
+    Você é um especialista sênior em Auditoria, Riscos, Governança e Controles Internos, com domínio dos frameworks:
+    - COSO, COBIT, ISO 27001, NIST CSF, ITIL e PMBOK.
+    
+    ### 🎯 Sua missão:
+    1. Gerar um **SUMÁRIO EXECUTIVO** robusto com:
+    - Principais riscos dos follow-ups filtrados.
+    - Temas críticos, controles deficientes, prazos críticos.
+    - Status (atrasados, pendentes, em andamento).
+    - Distribuição por ambiente, ano, risco e auditoria.
+    - Referência aos frameworks relevantes para os riscos identificados.
+    
+    2. Na sequência, liste os follow-ups encontrados:
+    - Para cada um, apresente:
+      - 📜 Descrição breve.
+      - 🔥 Status e Risco.
+      - 📌 Ambiente e Auditoria relacionada.
+    
+    ---
+    
+    ### 🗂️ Base filtrada:
+    {dados_filtrados}
+    
+    ### 🏛️ Base total:
+    {dados_completo}
+    
+    ---
+    
+    ⚠️ Seja técnico, objetivo e aderente às melhores práticas profissionais.
+    """
+    
         payload = {
             "model": "gpt-4o",
             "messages": [
@@ -841,77 +857,57 @@ Você é um especialista sênior em Auditoria, Riscos, Controles e Governança, 
             ],
             "temperature": 0.2
         }
-
+    
         headers = {
             "Authorization": f"Bearer {st.secrets['openai']['api_key']}",
             "Content-Type": "application/json"
         }
-
+    
         response = requests.post(
             "https://api.openai.com/v1/chat/completions",
             headers=headers,
             json=payload,
             verify=False
         )
-
+    
         if response.status_code == 200:
             resposta_analise = response.json()["choices"][0]["message"]["content"]
         else:
             resposta_analise = f"Erro na API: {response.status_code} - {response.text}"
-
+    
+        st.subheader("💡 Resultado da Análise Executiva")
         st.markdown(resposta_analise)
-
-        gerar_doc = st.checkbox("📄 Gerar relatório Word da análise")
-
-        if gerar_doc:
-            doc = Document()
-            doc.add_heading('Relatório - Análise Executiva dos Follow-ups', level=1)
-            p = doc.add_paragraph(resposta_analise)
-            p.style.font.size = Pt(12)
-
-            buffer = BytesIO()
-            doc.save(buffer)
-            buffer.seek(0)
-
-            st.download_button(
-                label="📥 Baixar Análise Executiva em Word",
-                data=buffer,
-                file_name="analise_executiva_followups.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
-
-        # 🔥 Botão Consultor
+    
         if st.button("🚀 Consultor de Planos de Ação"):
             st.session_state.executar_consultor = True
-
+    
     if st.session_state.executar_consultor:
-        st.subheader("🏗️ Consultoria - Plano de Ação")
-
+        df_filtrado, filtros = aplicar_filtros_df(df, pergunta)
+    
+        dados_filtrados = df_filtrado.fillna("").astype(str).to_markdown(index=False) if not df_filtrado.empty else "Nenhum follow-up encontrado."
+    
         prompt_consultor = f"""
-Você é um consultor sênior especializado em governança, riscos, controles internos e gestão de projetos.
-
-Sua missão é ajudar o usuário a **sanar os follow-ups identificados**, com um plano estruturado que deve conter:
-
-- 🎯 Objetivo geral.
-- 🔍 Análise dos follow-ups (considerar os temas, riscos, status e ambientes da base abaixo).
-- 🏗️ Plano de Projeto com:
-   - 📑 Descrição das etapas necessárias.
-   - ⏳ Prazos recomendados.
-   - 👥 Áreas ou responsáveis típicos.
-   - 🛠️ Ferramentas ou controles sugeridos.
-   - 📚 Referência aos frameworks (COBIT, COSO, ISO 27001, NIST, ITIL, PMBOK).
-   - 🚩 Riscos e pontos críticos.
-
----
-
-### 🗂️ Base de dados de follow-ups:
-{dados_markdown}
-
----
-
-Gere uma resposta clara, robusta, bem estruturada e profissional.
-"""
-
+    Você é um consultor em Governança, Riscos e Controles.
+    
+    ### 🎯 Para cada follow-up abaixo, gere um **PLANO DE AÇÃO ESPECÍFICO**, contendo:
+    - Descrição do problema e risco associado.
+    - 🚀 Plano de ação completo para resolver este follow-up, incluindo:
+       - 📑 Descrição da ação.
+       - ⏳ Prazo recomendado.
+       - 👥 Áreas ou responsáveis típicos.
+       - 🛠️ Ferramentas, métodos ou frameworks aplicáveis (COBIT, COSO, ISO 27001, NIST, ITIL, PMBOK).
+       - 🚩 Riscos e pontos críticos de não execução.
+    
+    ---
+    
+    ### 🗂️ Base de follow-ups:
+    {dados_filtrados}
+    
+    ---
+    
+    ⚠️ O plano de ação deve ser **100% personalizado para os follow-ups presentes na base.**
+    """
+    
         payload2 = {
             "model": "gpt-4o",
             "messages": [
@@ -920,44 +916,27 @@ Gere uma resposta clara, robusta, bem estruturada e profissional.
             ],
             "temperature": 0.2
         }
-
+    
         response2 = requests.post(
             "https://api.openai.com/v1/chat/completions",
             headers=headers,
             json=payload2,
             verify=False
         )
-
+    
         if response2.status_code == 200:
             resposta_consultor = response2.json()["choices"][0]["message"]["content"]
         else:
             resposta_consultor = f"Erro na API: {response2.status_code} - {response2.text}"
-
+    
+        st.subheader("🏗️ Consultoria - Plano de Ação")
         st.markdown(resposta_consultor)
-
-        gerar_doc2 = st.checkbox("📄 Gerar relatório Word do plano de ação")
-
-        if gerar_doc2:
-            doc2 = Document()
-            doc2.add_heading('Plano de Projeto - Sanar Follow-ups', level=1)
-            p2 = doc2.add_paragraph(resposta_consultor)
-            p2.style.font.size = Pt(12)
-
-            buffer2 = BytesIO()
-            doc2.save(buffer2)
-            buffer2.seek(0)
-
-            st.download_button(
-                label="📥 Baixar Plano de Ação em Word",
-                data=buffer2,
-                file_name="plano_acao_followups.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
-
-    # 📊 Mostrar base de dados
+    
+    # 🔍 Visualizar follow-ups encontrados
     st.markdown("### 📋 Follow-ups encontrados:")
-    if not df.empty:
-        st.dataframe(df, use_container_width=True)
+    df_filtrado, filtros = aplicar_filtros_df(df, pergunta)
+    if not df_filtrado.empty:
+        st.dataframe(df_filtrado, use_container_width=True)
     else:
         st.info("Nenhum follow-up encontrado.")
         
