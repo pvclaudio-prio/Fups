@@ -759,7 +759,7 @@ elif menu == "Visualizar Evidências":
 
 elif menu == "🔍 Chatbot FUP":
 
-    st.title("🤖 Chatbot dos relatórios de auditoria")
+    st.title("🤖 Chatbot dos Relatórios de Auditoria")
 
     usuario_logado = st.session_state.username
     nome_usuario = users[usuario_logado]["name"]
@@ -782,45 +782,44 @@ elif menu == "🔍 Chatbot FUP":
         st.warning("Nenhum dado disponível.")
         st.stop()
 
-    # 🔐 Filtro por admin ou usuário
     if usuario_logado not in admin_users:
         df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
 
     st.markdown("### 📝 Digite sua pergunta sobre os follow-ups:")
     pergunta = st.text_input(
-        "Ex: Quais follow-ups em andamento no ambiente SAP em 2024? "
-        "Ou: O que posso fazer para sanar meus planos de ação?",
+        "Ex: Quais são os principais riscos dos meus follow-ups? Ou: Mostre os pontos críticos.",
         key="pergunta_fup"
     )
-    enviar = st.button("📨 Enviar")
+    enviar = st.button("📨 Executar Análise")
 
     if enviar:
-        API_KEY = st.secrets["openai"]["api_key"]
 
+        API_KEY = st.secrets["openai"]["api_key"]
         dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
 
+        # 🔸 Prompt do Agente 1 (Análise Executiva)
         system_prompt = f"""
-Você é um especialista sênior em auditoria interna.
+Você é um especialista sênior em Auditoria, Riscos, Controles e Governança, com domínio dos frameworks COSO, COBIT, NIST, ISO 27001, ITIL e PMBOK.
 
-Sua missão é:
+### 🎯 Sua missão:
+1. Gerar um **Sumário Executivo**, contendo:
+   - Resumo dos follow-ups encontrados.
+   - Principais riscos, atrasos, temas críticos e falhas de controle.
+   - Distribuição por ambiente, ano, risco, status.
+   - Aplicar frameworks de boas práticas (ex.: COBIT - Gestão de Acessos, NIST - Monitoramento, ISO 27001 - Segurança da Informação).
+   - Destaque onde estão os principais pontos de atenção.
 
-1. Responder perguntas sobre follow-ups considerando:
-   - Listagem de follow-ups.
-   - Quantidade total, status e distribuição.
-   - Insights, tendências, riscos e pontos críticos.
-
-2. Se o usuário perguntar 'O que posso fazer para sanar meus planos de ação?':
-   - Crie um plano de ação robusto, com sugestões claras, técnicas e bem detalhadas.
-   - Ofereça um **passo a passo estruturado**, incluindo exemplos práticos, possíveis ferramentas a utilizar, e uma ordem lógica de execução.
+2. Na sequência, apresente:
+   - A lista de follow-ups encontrados com breve descrição, status e riscos.
 
 ---
 
-### 🗂️ Base de dados disponível:
+### 🔍 Base de dados:
 {dados_markdown}
 
 ---
 
-Seja claro, direto e profissional. Sempre entregue respostas práticas e acionáveis.
+🛑 Seja técnico, objetivo, claro e alinhado às melhores práticas de auditoria interna.
 """
 
         payload = {
@@ -845,33 +844,103 @@ Seja claro, direto e profissional. Sempre entregue respostas práticas e acioná
         )
 
         if response.status_code == 200:
-            resposta_final = response.json()["choices"][0]["message"]["content"]
+            resposta_analise = response.json()["choices"][0]["message"]["content"]
         else:
-            resposta_final = f"Erro na API: {response.status_code} - {response.text}"
+            resposta_analise = f"Erro na API: {response.status_code} - {response.text}"
 
-        # 💬 Exibir resposta
-        st.markdown("### 💡 Resposta do Agente")
-        st.markdown(resposta_final)
+        st.markdown("### 💡 Resultado da Análise Executiva")
+        st.markdown(resposta_analise)
 
-        # 📄 Gerar documento Word
-        doc = Document()
-        doc.add_heading('Resposta do Chatbot FUP', level=1)
+        gerar_doc = st.checkbox("📄 Gerar relatório Word da análise")
 
-        paragrafo = doc.add_paragraph(resposta_final)
-        paragrafo.style.font.size = Pt(12)
+        if gerar_doc:
+            doc = Document()
+            doc.add_heading('Relatório - Análise Executiva dos Follow-ups', level=1)
+            p = doc.add_paragraph(resposta_analise)
+            p.style.font.size = Pt(12)
 
-        buffer = BytesIO()
-        doc.save(buffer)
-        buffer.seek(0)
+            buffer = BytesIO()
+            doc.save(buffer)
+            buffer.seek(0)
 
-        st.download_button(
-            label="📥 Baixar resposta em Word",
-            data=buffer,
-            file_name="resposta_chatbot.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
+            st.download_button(
+                label="📥 Baixar Análise Executiva em Word",
+                data=buffer,
+                file_name="analise_executiva_followups.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
 
-        # 📊 Exibir dataframe
+        # 🔥 Ativação do Consultor de Planos de Ação
+        if st.button("🚀 Consultor de Planos de Ação"):
+            prompt_consultor = f"""
+Você é um consultor sênior especializado em governança, riscos, controles internos e gestão de projetos.
+
+Sua missão é ajudar o usuário a **sanar os follow-ups identificados**, com um plano estruturado que deve conter:
+
+- 🎯 Objetivo geral.
+- 🔍 Análise dos follow-ups (considerar os temas, riscos, status e ambientes da base abaixo).
+- 🏗️ Plano de Projeto com:
+   - 📑 Descrição das etapas necessárias.
+   - ⏳ Prazos recomendados.
+   - 👥 Áreas ou responsáveis típicos.
+   - 🛠️ Ferramentas ou controles sugeridos.
+   - 📚 Referência aos frameworks (COBIT, COSO, ISO 27001, NIST, ITIL, PMBOK).
+   - 🚩 Riscos e pontos críticos.
+
+---
+
+### 🗂️ Base de dados de follow-ups:
+{dados_markdown}
+
+---
+
+Gere uma resposta clara, robusta, bem estruturada e profissional.
+"""
+
+            payload2 = {
+                "model": "gpt-4o",
+                "messages": [
+                    {"role": "system", "content": prompt_consultor},
+                    {"role": "user", "content": "Como posso estruturar um projeto para resolver meus follow-ups?"}
+                ],
+                "temperature": 0.2
+            }
+
+            response2 = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                json=payload2,
+                verify=False
+            )
+
+            if response2.status_code == 200:
+                resposta_consultor = response2.json()["choices"][0]["message"]["content"]
+            else:
+                resposta_consultor = f"Erro na API: {response2.status_code} - {response2.text}"
+
+            st.markdown("### 🏗️ Consultoria - Plano de Ação")
+            st.markdown(resposta_consultor)
+
+            gerar_doc2 = st.checkbox("📄 Gerar relatório Word do plano de ação")
+
+            if gerar_doc2:
+                doc2 = Document()
+                doc2.add_heading('Plano de Projeto - Sanar Follow-ups', level=1)
+                p2 = doc2.add_paragraph(resposta_consultor)
+                p2.style.font.size = Pt(12)
+
+                buffer2 = BytesIO()
+                doc2.save(buffer2)
+                buffer2.seek(0)
+
+                st.download_button(
+                    label="📥 Baixar Plano de Ação em Word",
+                    data=buffer2,
+                    file_name="plano_acao_followups.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                )
+
+        # 🔍 Exibir os dados encontrados
         st.markdown("### 📋 Follow-ups encontrados:")
         if not df.empty:
             st.dataframe(df, use_container_width=True)
