@@ -887,26 +887,46 @@ elif menu == "🔍 Chatbot FUP":
         dados_filtrados = df_filtrado.fillna("").astype(str).to_markdown(index=False) if not df_filtrado.empty else "Nenhum follow-up encontrado."
     
         prompt_consultor = f"""
-    Você é um consultor em Governança, Riscos e Controles.
-    
-    ### 🎯 Para cada follow-up abaixo, gere um **PLANO DE AÇÃO ESPECÍFICO**, contendo:
-    - Descrição do problema e risco associado.
-    - 🚀 Plano de ação completo para resolver este follow-up, incluindo:
-       - 📑 Descrição da ação.
-       - ⏳ Prazo recomendado.
-       - 👥 Áreas ou responsáveis típicos.
-       - 🛠️ Ferramentas, métodos ou frameworks aplicáveis (COBIT, COSO, ISO 27001, NIST, ITIL, PMBOK).
-       - 🚩 Riscos e pontos críticos de não execução.
-    
-    ---
-    
-    ### 🗂️ Base de follow-ups:
-    {dados_filtrados}
-    
-    ---
-    
-    ⚠️ O plano de ação deve ser **100% personalizado para os follow-ups presentes na base.**
-    """
+Você é um consultor sênior, especialista em governança, riscos, compliance, auditoria e gestão de projetos.
+
+Sua missão é ajudar o usuário a **sanar os follow-ups identificados**, propondo **formas práticas e detalhadas de executar cada plano de ação existente na base de dados**.
+
+---
+
+### 🎯 Para cada follow-up listado na base:
+1. **Leia atentamente o conteúdo do campo "Plano_de_Acao"** e interprete qual é a ação que está sendo proposta.
+
+2. Gere um **plano de execução detalhado**, incluindo:
+   - 📜 **Descrição prática de como executar o plano de ação.**
+   - 🔧 **Ferramentas, metodologias ou sistemas que podem ser utilizados.**
+   - ✅ **Critérios de avaliação, checklists ou requisitos que devem ser analisados.**
+   - 🚩 **Principais riscos e cuidados que precisam ser tomados durante a execução.**
+   - 🧠 **Boas práticas de mercado e referência aos frameworks aplicáveis (COBIT, COSO, ISO 27001, NIST, ITIL, PMBOK).**
+
+---
+
+### 💡 **Exemplo esperado:**
+- Se o plano de ação diz: "**Executar due diligence do fornecedor**":
+   - Descreva:
+     - Como estruturar um processo de due diligence.
+     - Quais critérios devem ser avaliados (ex.: integridade, questões financeiras, trabalhistas, ambientais).
+     - Quais ferramentas podem ser usadas (ex.: sites públicos, bases de dados, softwares como LexisNexis, Refinitiv, D&B).
+     - Principais cuidados, como veracidade das informações e atualização dos dados.
+     - Frameworks que apoiam essa prática (ex.: ISO 37001, COSO, Compliance Programs).
+
+---
+
+### 🗂️ Base de follow-ups:
+{dados_filtrados}
+
+---
+
+⚠️ Importante:
+- O plano deve ser **100% personalizado com base no conteúdo real dos planos de ação da base**.
+- Não escreva respostas genéricas.
+- Cada follow-up deve gerar uma análise própria, com orientações práticas, específicas e acionáveis.
+- Seja extremamente profissional, técnico, detalhado e aderente às melhores práticas internacionais.
+"""
     
         payload2 = {
             "model": "gpt-4o",
