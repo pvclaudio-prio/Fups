@@ -26,6 +26,8 @@ from difflib import get_close_matches
 import re
 from datetime import timedelta
 import matplotlib.pyplot as plt
+from docx import Document
+from docx.shared import Pt
 
 st.set_page_config(layout = 'wide')
 
@@ -762,208 +764,119 @@ elif menu == "🔍 Chatbot FUP":
     usuario_logado = st.session_state.username
     nome_usuario = users[usuario_logado]["name"]
 
+    @st.cache_data
     def carregar_followups():
-            drive = conectar_drive()
-            arquivos = drive.ListFile({
-                'q': "title = 'followups.csv' and trashed=false"
-            }).GetList()
-            if not arquivos:
-                return pd.DataFrame()
-            caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
-            arquivos[0].GetContentFile(caminho_temp)
-            return pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
-    
-        df = carregar_followups()
-        if df.empty:
-            st.warning("Nenhum dado disponível.")
-            st.stop()
+        drive = conectar_drive()
+        arquivos = drive.ListFile({
+            'q': "title = 'followups.csv' and trashed=false"
+        }).GetList()
+        if not arquivos:
+            return pd.DataFrame()
+        caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
+        arquivos[0].GetContentFile(caminho_temp)
+        return pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
 
+    df = carregar_followups()
+
+    if df.empty:
+        st.warning("Nenhum dado disponível.")
+        st.stop()
+
+    # 🔐 Filtro por admin ou usuário
     if usuario_logado not in admin_users:
         df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
 
-        st.markdown("### 📝 Digite sua pergunta sobre os relatórios de auditoria:")
-        pergunta = st.text_input("Ex: Quais follow-ups em andamento no ambiente SAP em 2024?", key="pergunta_fup")
-        enviar = st.button("📨 Enviar")
-    
-        if enviar:
-            st.write("✅ Chat encaminhado para o agente!")
-    
-            if pergunta and isinstance(pergunta, str):
-                prompt_chat = pergunta.strip().lower()
-                st.write("✅ Chat recebido:", prompt_chat)
-            else:
-                st.error("❌ Nenhuma pergunta válida recebida.")
-                st.stop()
-    
-            API_KEY = st.secrets["openai"]["api_key"]
-            filtros = {}
-    
-            st.write("🔍 Analisando valores semelhantes nas colunas...")
-    
-            # Pré-processa valores únicos das colunas textuais
-            valores_unicos = {}
-            for col in df.select_dtypes(include="object").columns:
-                valores_unicos[col] = df[col].astype(str).str.lower().str.strip().unique().tolist()
-    
-            # Tokeniza o prompt
-            tokens = re.findall(r"\w+", prompt_chat)
-    
-            melhor_match = None
-            melhor_coluna = None
-    
-            for token in tokens:
-                for col, valores in valores_unicos.items():
-                    match = get_close_matches(token, valores, n=1, cutoff=0.8)
-                    if match:
-                        melhor_match = match[0]
-                        melhor_coluna = col
-                        break
-                if melhor_match:
-                    break
-    
-            if melhor_match and melhor_coluna:
-                filtros[melhor_coluna] = melhor_match
-                st.write(f"📌 Valor interpretado: `{melhor_match}` na coluna `{melhor_coluna}`")
-            else:
-                st.warning("⚠️ Nenhuma coluna textual contém esse valor.")
-    
-            # Extrair ano
-            ano_match = re.search(r"(\d{4})", prompt_chat)
-            if ano_match:
-                filtros["Ano"] = ano_match.group(1)
-                st.write("📅 Ano identificado:", filtros["Ano"])
-    
-            # 📊 Aplicar filtros
-            if filtros:
-                df_filtrado = df.copy()
-                for col in df_filtrado.select_dtypes(include="object").columns:
-                    df_filtrado[col] = df_filtrado[col].astype(str).str.lower().str.strip()
-    
-                for k, v in filtros.items():
-                    if k in df_filtrado.columns:
-                        df_filtrado[k] = df_filtrado[k].astype(str)
-                        df_filtrado = df_filtrado[df_filtrado[k].str.contains(str(v).lower().strip(), na=False)]
-    
-                if not df_filtrado.empty:
-                    try:
-                        dados_markdown = df_filtrado.fillna("").astype(str).to_markdown(index=False)
-                    except ImportError:
-                        st.warning("⚠️ Instale `tabulate` para melhor formatação: `pip install tabulate`")
-                        dados_markdown = df_filtrado.fillna("").astype(str).to_csv(index=False, sep=";")
-                else:
-                    dados_markdown = "❌ Nenhum follow-up encontrado com os critérios especificados."
-            else:
-                try:
-                    dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
-                except ImportError:
-                    st.warning("⚠️ Instale `tabulate` para melhor formatação: `pip install tabulate`")
-                    dados_markdown = df.fillna("").astype(str).to_csv(index=False, sep=";")
-    
-            # 🧠 Prompt para análise
-            # Gera versão textual da base total
-            df_completo_markdown = df.fillna("").astype(str).to_markdown(index=False)
-            system_prompt = f"""
-    Você é um analista sênior de auditoria interna com acesso a duas bases de dados:
-    
-    1. **Base completa (`df_completo`)**: contém todos os follow-ups de auditoria disponíveis.
-    2. **Base filtrada (`dados_filtrados`)**: contém apenas os registros mais relevantes com base na pergunta do usuário.
-    
-    Sua missão é:
-    - Responder com base **principalmente na base filtrada**, mas sempre **comparando com a base total** para validar sua resposta.
-    - Na sua resposta não faça diferenciação entre os nomes das bases, faça referência à uma base única e não apresente informações conflitantes sobre as duas. Analise as duas bases e chegue na melhor resposta.
-    - Trazer uma lista com a relação de relatórios identificados com base nos critérios especificados pelo usuário.
-    - Informar quantos registros estão na base total e quantos foram filtrados.
-    - Indicar percentuais, tendências ou discrepâncias entre as duas bases.
-    - Fazer um resumo executivo no início sobre os principais assuntos críticos abordados na descrição dos follow ups.
-    
-    ---
-    
-    ### Base filtrada (`dados_filtrados`):
-    {dados_markdown}
-    
-    ---
-    
-    ### Base completa (`df_completo`):
-    {df_completo_markdown}
-    
-    ---
-    
-    ### Instruções finais:
-    - Se a base filtrada estiver vazia, diga “Não há registros compatíveis”.
-    - Seja direto, técnico e conciso.
-    - Use contagens e percentuais sempre que possível.
-    - Evite respostas genéricas, repetições ou rodeios.
-    """
-    
-            payload = {
-                "model": "gpt-4o",
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt_chat}
-                ],
-                "temperature": 0.2
-            }
-    
-            headers = {
-                "Authorization": f"Bearer {API_KEY}",
-                "Content-Type": "application/json"
-            }
-    
-            resposta_final = "❌ Nenhuma resposta gerada."
-            response = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers=headers,
-                json=payload,
-                verify=False
-            )
-    
-            if response.status_code == 200:
-                resposta_final = response.json()["choices"][0]["message"]["content"]
-            else:
-                resposta_final = f"Erro na API: {response.status_code} - {response.text}"
-    
-            # 🔁 Revisor
-            revisor_prompt = f"""
-    Você é um revisor técnico. Reescreva a resposta com:
-    - Clareza
-    - Estrutura objetiva
-    - Correção gramatical
-    - Sem repetições
-    
-    Base de dados:
-    {dados_markdown}
-    """
-    
-            payload_revisor = {
-                "model": "gpt-4o",
-                "messages": [
-                    {"role": "system", "content": revisor_prompt},
-                    {"role": "user", "content": resposta_final}
-                ],
-                "temperature": 0.2
-            }
-    
-            response_revisor = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers=headers,
-                json=payload_revisor,
-                verify=False
-            )
-    
-            if response_revisor.status_code == 200:
-                resposta_final = response_revisor.json()["choices"][0]["message"]["content"]
-            else:
-                resposta_final = f"(Erro ao revisar resposta: {response_revisor.status_code})\n\n{resposta_final}"
-    
-            # 💬 Exibir resposta e base
-            st.markdown("### 💬 Resposta do Assistente")
-            st.write(resposta_final)
-    
-            st.markdown("### 📋 Follow-ups encontrados:")
-            if 'df_filtrado' in locals() and not df_filtrado.empty:
-                st.dataframe(df_filtrado, use_container_width=True)
-            else:
-                st.info("Nenhum follow-up encontrado com os critérios aplicados.")
+    st.markdown("### 📝 Digite sua pergunta sobre os follow-ups:")
+    pergunta = st.text_input(
+        "Ex: Quais follow-ups em andamento no ambiente SAP em 2024? "
+        "Ou: O que posso fazer para sanar meus planos de ação?",
+        key="pergunta_fup"
+    )
+    enviar = st.button("📨 Enviar")
+
+    if enviar:
+        API_KEY = st.secrets["openai"]["api_key"]
+
+        dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
+
+        system_prompt = f"""
+Você é um especialista sênior em auditoria interna.
+
+Sua missão é:
+
+1. Responder perguntas sobre follow-ups considerando:
+   - Listagem de follow-ups.
+   - Quantidade total, status e distribuição.
+   - Insights, tendências, riscos e pontos críticos.
+
+2. Se o usuário perguntar 'O que posso fazer para sanar meus planos de ação?':
+   - Crie um plano de ação robusto, com sugestões claras, técnicas e bem detalhadas.
+   - Ofereça um **passo a passo estruturado**, incluindo exemplos práticos, possíveis ferramentas a utilizar, e uma ordem lógica de execução.
+
+---
+
+### 🗂️ Base de dados disponível:
+{dados_markdown}
+
+---
+
+Seja claro, direto e profissional. Sempre entregue respostas práticas e acionáveis.
+"""
+
+        payload = {
+            "model": "gpt-4o",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": pergunta}
+            ],
+            "temperature": 0.2
+        }
+
+        headers = {
+            "Authorization": f"Bearer {API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            verify=False
+        )
+
+        if response.status_code == 200:
+            resposta_final = response.json()["choices"][0]["message"]["content"]
+        else:
+            resposta_final = f"Erro na API: {response.status_code} - {response.text}"
+
+        # 💬 Exibir resposta
+        st.markdown("### 💡 Resposta do Agente")
+        st.markdown(resposta_final)
+
+        # 📄 Gerar documento Word
+        doc = Document()
+        doc.add_heading('Resposta do Chatbot FUP', level=1)
+
+        paragrafo = doc.add_paragraph(resposta_final)
+        paragrafo.style.font.size = Pt(12)
+
+        buffer = BytesIO()
+        doc.save(buffer)
+        buffer.seek(0)
+
+        st.download_button(
+            label="📥 Baixar resposta em Word",
+            data=buffer,
+            file_name="resposta_chatbot.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+
+        # 📊 Exibir dataframe
+        st.markdown("### 📋 Follow-ups encontrados:")
+        if not df.empty:
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info("Nenhum follow-up encontrado.")
         
 # Função para enviar e-mail mensal com follow-ups vencidos
 
