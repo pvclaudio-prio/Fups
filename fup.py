@@ -760,6 +760,7 @@ elif menu == "Visualizar Evidências":
 elif menu == "🔍 Chatbot FUP":
 
     st.title("🤖 Chatbot dos Relatórios de Auditoria")
+    st.subheader("📅 Hoje: " + str(datetime.now()))
 
     usuario_logado = st.session_state.username
     nome_usuario = users[usuario_logado]["name"]
@@ -785,19 +786,30 @@ elif menu == "🔍 Chatbot FUP":
     if usuario_logado not in admin_users:
         df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
 
+    dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
+
+    # 🔧 Estado
+    if 'executar_analise' not in st.session_state:
+        st.session_state.executar_analise = False
+    if 'executar_consultor' not in st.session_state:
+        st.session_state.executar_consultor = False
+
+    # 🔹 Pergunta do usuário
     st.markdown("### 📝 Digite sua pergunta sobre os follow-ups:")
     pergunta = st.text_input(
         "Ex: Quais são os principais riscos dos meus follow-ups? Ou: Mostre os pontos críticos.",
         key="pergunta_fup"
     )
-    enviar = st.button("📨 Executar Análise")
 
-    if enviar:
+    # 🔘 Botão da análise executiva
+    if st.button("📨 Executar Análise"):
+        st.session_state.executar_analise = True
+        st.session_state.executar_consultor = False
 
-        API_KEY = st.secrets["openai"]["api_key"]
-        dados_markdown = df.fillna("").astype(str).to_markdown(index=False)
+    if st.session_state.executar_analise:
+        st.subheader("💡 Resultado da Análise Executiva")
 
-        # 🔸 Prompt do Agente 1 (Análise Executiva)
+        # 🔥 Prompt Agente 1
         system_prompt = f"""
 Você é um especialista sênior em Auditoria, Riscos, Controles e Governança, com domínio dos frameworks COSO, COBIT, NIST, ISO 27001, ITIL e PMBOK.
 
@@ -832,7 +844,7 @@ Você é um especialista sênior em Auditoria, Riscos, Controles e Governança, 
         }
 
         headers = {
-            "Authorization": f"Bearer {API_KEY}",
+            "Authorization": f"Bearer {st.secrets['openai']['api_key']}",
             "Content-Type": "application/json"
         }
 
@@ -848,7 +860,6 @@ Você é um especialista sênior em Auditoria, Riscos, Controles e Governança, 
         else:
             resposta_analise = f"Erro na API: {response.status_code} - {response.text}"
 
-        st.markdown("### 💡 Resultado da Análise Executiva")
         st.markdown(resposta_analise)
 
         gerar_doc = st.checkbox("📄 Gerar relatório Word da análise")
@@ -870,9 +881,14 @@ Você é um especialista sênior em Auditoria, Riscos, Controles e Governança, 
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
 
-        # 🔥 Ativação do Consultor de Planos de Ação
+        # 🔥 Botão Consultor
         if st.button("🚀 Consultor de Planos de Ação"):
-            prompt_consultor = f"""
+            st.session_state.executar_consultor = True
+
+    if st.session_state.executar_consultor:
+        st.subheader("🏗️ Consultoria - Plano de Ação")
+
+        prompt_consultor = f"""
 Você é um consultor sênior especializado em governança, riscos, controles internos e gestão de projetos.
 
 Sua missão é ajudar o usuário a **sanar os follow-ups identificados**, com um plano estruturado que deve conter:
@@ -897,55 +913,54 @@ Sua missão é ajudar o usuário a **sanar os follow-ups identificados**, com um
 Gere uma resposta clara, robusta, bem estruturada e profissional.
 """
 
-            payload2 = {
-                "model": "gpt-4o",
-                "messages": [
-                    {"role": "system", "content": prompt_consultor},
-                    {"role": "user", "content": "Como posso estruturar um projeto para resolver meus follow-ups?"}
-                ],
-                "temperature": 0.2
-            }
+        payload2 = {
+            "model": "gpt-4o",
+            "messages": [
+                {"role": "system", "content": prompt_consultor},
+                {"role": "user", "content": "Como posso estruturar um projeto para resolver meus follow-ups?"}
+            ],
+            "temperature": 0.2
+        }
 
-            response2 = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers=headers,
-                json=payload2,
-                verify=False
+        response2 = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=payload2,
+            verify=False
+        )
+
+        if response2.status_code == 200:
+            resposta_consultor = response2.json()["choices"][0]["message"]["content"]
+        else:
+            resposta_consultor = f"Erro na API: {response2.status_code} - {response2.text}"
+
+        st.markdown(resposta_consultor)
+
+        gerar_doc2 = st.checkbox("📄 Gerar relatório Word do plano de ação")
+
+        if gerar_doc2:
+            doc2 = Document()
+            doc2.add_heading('Plano de Projeto - Sanar Follow-ups', level=1)
+            p2 = doc2.add_paragraph(resposta_consultor)
+            p2.style.font.size = Pt(12)
+
+            buffer2 = BytesIO()
+            doc2.save(buffer2)
+            buffer2.seek(0)
+
+            st.download_button(
+                label="📥 Baixar Plano de Ação em Word",
+                data=buffer2,
+                file_name="plano_acao_followups.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
 
-            if response2.status_code == 200:
-                resposta_consultor = response2.json()["choices"][0]["message"]["content"]
-            else:
-                resposta_consultor = f"Erro na API: {response2.status_code} - {response2.text}"
-
-            st.markdown("### 🏗️ Consultoria - Plano de Ação")
-            st.markdown(resposta_consultor)
-
-            gerar_doc2 = st.checkbox("📄 Gerar relatório Word do plano de ação")
-
-            if gerar_doc2:
-                doc2 = Document()
-                doc2.add_heading('Plano de Projeto - Sanar Follow-ups', level=1)
-                p2 = doc2.add_paragraph(resposta_consultor)
-                p2.style.font.size = Pt(12)
-
-                buffer2 = BytesIO()
-                doc2.save(buffer2)
-                buffer2.seek(0)
-
-                st.download_button(
-                    label="📥 Baixar Plano de Ação em Word",
-                    data=buffer2,
-                    file_name="plano_acao_followups.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
-
-        # 🔍 Exibir os dados encontrados
-        st.markdown("### 📋 Follow-ups encontrados:")
-        if not df.empty:
-            st.dataframe(df, use_container_width=True)
-        else:
-            st.info("Nenhum follow-up encontrado.")
+    # 📊 Mostrar base de dados
+    st.markdown("### 📋 Follow-ups encontrados:")
+    if not df.empty:
+        st.dataframe(df, use_container_width=True)
+    else:
+        st.info("Nenhum follow-up encontrado.")
         
 # Função para enviar e-mail mensal com follow-ups vencidos
 
