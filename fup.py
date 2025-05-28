@@ -760,7 +760,6 @@ elif menu == "Visualizar Evidências":
 elif menu == "🔍 Chatbot FUP":
 
     st.title("🤖 Chatbot dos Relatórios de Auditoria")
-    st.subheader("📅 Hoje: " + str(datetime.now()))
 
     usuario_logado = st.session_state.username
     nome_usuario = users[usuario_logado]["name"]
