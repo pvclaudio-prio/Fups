@@ -758,8 +758,11 @@ elif menu == "Visualizar Evidências":
 elif menu == "🔍 Chatbot FUP":
 
     st.title("🤖 Chatbot dos relatórios de auditoria")
-    if st.session_state.username in chat_users:
-        def carregar_followups():
+
+    usuario_logado = st.session_state.username
+    nome_usuario = users[usuario_logado]["name"]
+
+    def carregar_followups():
             drive = conectar_drive()
             arquivos = drive.ListFile({
                 'q': "title = 'followups.csv' and trashed=false"
@@ -774,7 +777,10 @@ elif menu == "🔍 Chatbot FUP":
         if df.empty:
             st.warning("Nenhum dado disponível.")
             st.stop()
-    
+
+    if usuario_logado not in admin_users:
+        df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
+
         st.markdown("### 📝 Digite sua pergunta sobre os relatórios de auditoria:")
         pergunta = st.text_input("Ex: Quais follow-ups em andamento no ambiente SAP em 2024?", key="pergunta_fup")
         enviar = st.button("📨 Enviar")
@@ -958,8 +964,6 @@ elif menu == "🔍 Chatbot FUP":
                 st.dataframe(df_filtrado, use_container_width=True)
             else:
                 st.info("Nenhum follow-up encontrado com os critérios aplicados.")
-    else:
-        st.warning("Você não tem permissão para acessar o chatbot, solicite ao time de auditoria!")
         
 # Função para enviar e-mail mensal com follow-ups vencidos
 
