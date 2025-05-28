@@ -328,7 +328,7 @@ if menu == "Dashboard":
         st.plotly_chart(fig_ano, use_container_width=True)
 
     except Exception as e:
-        st.error(f"Erro ao acessar dados do Google Drive: {e}")
+        st.error(f"Erro ao acessar dados do Drive: {e}")
 
 elif menu == "Meus Follow-ups":
     st.title("📁 Meus Follow-ups")
@@ -435,7 +435,7 @@ elif menu == "Meus Follow-ups":
                         arquivo = arquivos[0]
                         arquivo.SetContentFile(caminho_csv)
                         arquivo.Upload()
-                    st.info("📤 Arquivo 'followups.csv' atualizado no Google Drive.")
+                    st.info("📤 Arquivo 'followups.csv' atualizado no Drive.")
                 except Exception as e:
                     st.warning(f"Erro ao enviar para o Drive: {e}")
 
@@ -476,7 +476,7 @@ elif menu == "Meus Follow-ups":
             st.info("Nenhum follow-up encontrado com os filtros aplicados.")
 
     except Exception as e:
-        st.error(f"Erro ao acessar dados do Google Drive: {e}")
+        st.error(f"Erro ao acessar dados do Drive: {e}")
 
 elif menu == "Cadastrar Follow-up":
     st.title("📝 Cadastrar Follow-up")
@@ -520,7 +520,7 @@ elif menu == "Cadastrar Follow-up":
             }
     
             try:
-                # Conecta ao Google Drive e busca o followups.csv
+                # Conecta ao Drive e busca o followups.csv
                 drive = conectar_drive()
                 arquivos = drive.ListFile({
                     'q': "title = 'followups.csv' and trashed=false"
@@ -542,7 +542,7 @@ elif menu == "Cadastrar Follow-up":
                 arquivo.SetContentFile(caminho_csv)
                 arquivo.Upload()
     
-                st.success("✅ Follow-up salvo e sincronizado com o Google Drive!")
+                st.success("✅ Follow-up salvo e sincronizado com o Drive!")
     
                 corpo = f"""
                 <p>Olá <b>{responsavel}</b>,</p>
@@ -628,7 +628,7 @@ elif menu == "Enviar Evidências":
                 st.warning("Você precisa anexar pelo menos um arquivo.")
                 st.stop()
 
-            # Upload direto para o Google Drive
+            # Upload direto para o Drive
             sucesso_upload = upload_evidencias_para_drive(idx, arquivos, observacao)
 
             # Registro em log (local)
@@ -663,7 +663,7 @@ elif menu == "Enviar Evidências":
                     <li><b>Arquivos:</b> {"; ".join([arq.name for arq in arquivos])}</li>
                     <li><b>Data:</b> {datetime.now().strftime("%d/%m/%Y %H:%M")}</li>
                 </ul>
-                <p>Evidências armazenadas no Google Drive (pasta: <b>evidencias/indice_{idx}</b>).</p>
+                <p>Evidências armazenadas no Drive (pasta: <b>evidencias/indice_{idx}</b>).</p>
                 """
 
                 destinatarios_evidencias = ["cvieira@prio3.com.br","mathayde@prio3.com.br"]
@@ -677,11 +677,11 @@ elif menu == "Enviar Evidências":
                     st.success("📧 Notificação enviada ao time de auditoria!")
 
     except Exception as e:
-        st.error(f"Erro ao carregar dados do Google Drive: {e}")
+        st.error(f"Erro ao carregar dados do Drive: {e}")
 
 elif menu == "Visualizar Evidências":
 
-    st.title("📂 Visualização de Evidências - Google Drive")
+    st.title("📂 Visualização de Evidências")
 
     try:
         drive = conectar_drive()
@@ -778,7 +778,7 @@ elif menu == "Visualizar Evidências":
                     st.error(f"Erro ao excluir evidências: {e}")
 
     except Exception as e:
-        st.error("Erro ao acessar evidências no Google Drive.")
+        st.error("Erro ao acessar evidências no Drive.")
         st.code(traceback.format_exc())
 
 elif menu == "🔍 Chatbot FUP":
@@ -894,7 +894,7 @@ Sua missão é ajudar o usuário a **sanar os follow-ups identificados**, propon
 ---
 
 ### 🎯 Para cada follow-up listado na base:
-1. **Leia atentamente o conteúdo do campo "Plano_de_Acao"** e interprete qual é a ação que está sendo proposta.
+1. **Leia atentamente o conteúdo do campo "Plano de Acao"** e interprete qual é a ação que está sendo proposta.
 
 2. Gere um **plano de execução detalhado**, incluindo:
    - 📜 **Descrição prática de como executar o plano de ação.**
