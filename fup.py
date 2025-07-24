@@ -389,7 +389,7 @@ if menu == "Dashboard":
         df["Status"] = df["Status"].fillna("Não informado")
 
         # --- Filtros principais ---
-        filtro_vencidos = st.segmented_button(
+        filtro_vencidos = st.pills(
             label='Selecione os status desejados:',
             options=['No Prazo', 'Vencidos', 'Todos'],
             key='filtro_vencidos'
