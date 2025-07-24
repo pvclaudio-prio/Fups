@@ -28,6 +28,7 @@ from datetime import timedelta
 import matplotlib.pyplot as plt
 from docx import Document
 from docx.shared import Pt
+from pandas import Timestamp
 
 st.set_page_config(layout = 'wide')
 
