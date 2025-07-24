@@ -396,7 +396,7 @@ if menu == "Dashboard":
     )
         
         lista_auditorias = sorted(df['Auditoria'].unique().tolist()) + ['Todas']
-        filtro_auditoria = multiselect('Selecione as auditorias: ', lista_auditorias, default='Todas')
+        filtro_auditoria = st.multiselect('Selecione as auditorias: ', lista_auditorias, default='Todas')
 
         hoje = Timestamp.today().normalize()
         
