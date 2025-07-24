@@ -389,11 +389,10 @@ if menu == "Dashboard":
         df["Status"] = df["Status"].fillna("Não informado")
 
         # --- Filtros principais ---
-        filtro_vencidos = st.segmented_control(
-            'Selecione os status desejados:',
-            ['No Prazo', 'Vencidos', 'Todos'],
-            selection_mode="single",
-            default='Todos'
+        filtro_vencidos = st.segmented_button(
+            label='Selecione os status desejados:',
+            options=['No Prazo', 'Vencidos', 'Todos'],
+            key='filtro_vencidos'
         )
         
         lista_auditorias = sorted(df['Auditoria'].unique().tolist()) + ['Todas']
