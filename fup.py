@@ -389,11 +389,11 @@ if menu == "Dashboard":
         df["Status"] = df["Status"].fillna("Não informado")
 
         # --- Filtros principais ---
-        filtro_vencidos = st.pills(
-            label='Selecione os status desejados:',
-            options=['No Prazo', 'Vencidos', 'Todos'],
-            key='filtro_vencidos'
-        )
+        filtro_vencidos = st.radio(
+        label='Selecione os status desejados:',
+        options=['Todos', 'No Prazo', 'Vencidos'],
+        key='filtro_vencidos'
+    )
         
         lista_auditorias = sorted(df['Auditoria'].unique().tolist()) + ['Todas']
         filtro_auditoria = multiselect('Selecione as auditorias: ', lista_auditorias, default='Todas')
