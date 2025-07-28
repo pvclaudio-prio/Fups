@@ -749,6 +749,7 @@ elif menu == "Enviar Evidências":
 
         st.markdown(f"""
         🔎 **Título:** {linha['Titulo']}  
+        🚩 **Apontamento:** {linha['Apontamento']} 
         📅 **Prazo:** {linha['Prazo']}  
         👤 **Responsável:** {linha['Responsavel']}  
         📝 **Plano de Ação:** {linha['Plano de Acao']}
@@ -756,7 +757,7 @@ elif menu == "Enviar Evidências":
 
         arquivos = st.file_uploader(
             "Anexe arquivos de evidência",
-            type=["pdf", "png", "jpg", "jpeg", "zip"],
+            type=["pdf", "png", "jpg", "jpeg", "zip", "doc", "docx", "eml", "msg"],
             accept_multiple_files=True
         )
         observacao = st.text_area("Observações (opcional)")
