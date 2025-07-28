@@ -236,7 +236,7 @@ def carregar_followups():
     }).GetList()
 
     colunas = [
-        "Titulo", "Ambiente", "Ano", "Auditoria", "Risco",
+        "Titulo", "Ambiente", "Ano", "Auditoria", "Apontamento", "Risco",
         "Plano de Acao", "Responsavel", "Usuario", "E-mail",
         "Prazo", "Data de Conclusão", "Status", "Avaliação FUP", "Observação"
     ]
@@ -624,6 +624,7 @@ elif menu == "Cadastrar Follow-up":
             ambiente = st.text_input("Ambiente")
             ano = st.selectbox("Ano", list(range(2020, date.today().year + 2)))
             auditoria = st.text_input("Auditoria")
+            apontamento = st.text_input("Apontamento")
             risco = st.selectbox("Risco", ["Baixo", "Médio", "Alto"])
             plano = st.text_area("Plano de Ação")
             responsavel = st.text_input("Responsável")
@@ -643,6 +644,7 @@ elif menu == "Cadastrar Follow-up":
                 "Ambiente": ambiente,
                 "Ano": ano,
                 "Auditoria": auditoria,
+                "Apontamento": apontamento,
                 "Risco": risco,
                 "Plano de Acao": plano,
                 "Responsavel": responsavel,
@@ -686,6 +688,7 @@ elif menu == "Cadastrar Follow-up":
                 <ul>
                     <li><b>Título:</b> {titulo}</li>
                     <li><b>Auditoria:</b> {auditoria}</li>
+                    <li><b>Apontamento:</b> {apontamento}</li>
                     <li><b>Plano de Acao:</b> {plano}</li>
                     <li><b>Prazo:</b> {prazo.strftime('%d/%m/%Y')}</li>
                     <li><b>Status:</b> {status}</li>
