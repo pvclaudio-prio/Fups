@@ -806,7 +806,7 @@ elif menu == "Enviar Evidências":
                 <p>Evidências armazenadas no Drive (pasta: <b>evidencias/indice_{idx}</b>).</p>
                 """
 
-                destinatarios_evidencias = ["cvieira@prio3.com.br","mathayde@prio3.com.br"]
+                destinatarios_evidencias = ["cvieira@prio3.com.br","mathayde@prio3.com.br","amendonca@prio3.com.br"]
                 
                 sucesso_envio = enviar_email_gmail(
                     destinatario=destinatarios_evidencias,
