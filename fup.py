@@ -749,7 +749,7 @@ elif menu == "Enviar Evidências":
 
         st.markdown(f"""
         🔎 **Título:** {linha['Titulo']}  
-        🚩 **Apontamento:** {linha['Apontamento']} 
+        🚩 **Apontamento:** {linha['Apontamento']}  
         📅 **Prazo:** {linha['Prazo']}  
         👤 **Responsável:** {linha['Responsavel']}  
         📝 **Plano de Ação:** {linha['Plano de Acao']}
