@@ -798,6 +798,7 @@ elif menu == "Enviar Evidências":
                 <ul>
                     <li><b>Índice:</b> {idx}</li>
                     <li><b>Título:</b> {linha['Titulo']}</li>
+                    <li><b>Apontamento:</b> {linha['Apontamento']}</li>
                     <li><b>Responsável:</b> {linha['Responsavel']}</li>
                     <li><b>Arquivos:</b> {"; ".join([arq.name for arq in arquivos])}</li>
                     <li><b>Data:</b> {datetime.now().strftime("%d/%m/%Y %H:%M")}</li>
