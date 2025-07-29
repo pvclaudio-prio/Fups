@@ -525,7 +525,7 @@ elif menu == "Meus Follow-ups":
         if ano_selecionado != "Todos":
             df = df[df["Ano"] == ano_selecionado]
 
-        if vencimento_selecionado == 'Vencidos':
+        if vencimento_selecionado == 'Vencido':
             df = df[df['Prazo']< hoje]
         elif vencimento_selecionado == 'No Prazo':
             df = df[df['Prazo']>= hoje]
