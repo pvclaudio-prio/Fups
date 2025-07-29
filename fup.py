@@ -313,7 +313,6 @@ if "logged_in" not in st.session_state:
 
 if not st.session_state.logged_in:
     st.title("🔐 Login")
-    st.image("Imagem PRIO.png", width=600)
     username = st.text_input("Usuário")
     password = st.text_input("Senha", type="password")
     if st.button("Entrar"):
