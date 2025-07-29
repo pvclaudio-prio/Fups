@@ -41,6 +41,8 @@ admin_users = ["cvieira", "amendonca", "mathayde"]
 cadastro_users = ["cvieira", "amendonca", "mathayde"]
 chat_users = ["cvieira", "amendonca", "mathayde","bromanelli","ysouza"]
 
+hoje = Timestamp.today().normalize()
+
 def enviar_email_gmail(destinatario, assunto, corpo_html):
     try:
         yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
