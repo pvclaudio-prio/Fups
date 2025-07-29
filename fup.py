@@ -43,29 +43,6 @@ chat_users = ["cvieira", "amendonca", "mathayde","bromanelli","ysouza"]
 
 hoje = Timestamp.today().normalize()
 
-# Define papel de parede com CSS
-st.markdown(
-    f"""
-    <style>
-        .stApp {{
-            background-image: url("Imagem PRIO.png");
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-        }}
-        .login-container {{
-            background-color: rgba(255, 255, 255, 0.85);
-            padding: 2rem;
-            border-radius: 12px;
-            max-width: 400px;
-            margin: 10% auto;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }}
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
 def enviar_email_gmail(destinatario, assunto, corpo_html):
     try:
         yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
@@ -335,8 +312,8 @@ if "logged_in" not in st.session_state:
     st.session_state.username = ""
 
 if not st.session_state.logged_in:
-    st.markdown('<div class="login-container">', unsafe_allow_html=True)
     st.title("🔐 Login")
+    st.image("Imagem PRIO.png", width=600)
     username = st.text_input("Usuário")
     password = st.text_input("Senha", type="password")
     if st.button("Entrar"):
