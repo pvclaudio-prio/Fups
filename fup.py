@@ -889,24 +889,57 @@ elif menu == "Visualizar Evidências":
             st.info("Nenhum arquivo nesta pasta.")
             st.stop()
 
-        buffer_zip = BytesIO()
-        with zipfile.ZipFile(buffer_zip, "w") as zipf:
-            for arq in arquivos:
-                nome = arq['title']
-                if nome.lower() == "observacao.txt":
-                    conteudo = arq.GetContentString()
-                    st.markdown("**📝 Observação:**")
-                    st.info(conteudo)
-                    zipf.writestr(nome, conteudo)
-                else:
-                    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
-                        arq.GetContentFile(tmp_file.name)
-                        tmp_file.seek(0)
-                        zipf.write(tmp_file.name, arcname=nome)
-                        link = arq['alternateLink']
-                        st.markdown(f"📎 [{nome}]({link})", unsafe_allow_html=True)
+        arquivos_ordenados = sorted(arquivos, key=lambda x: x['title'])
 
+        buffer_zip = BytesIO()
+        zipf = zipfile.ZipFile(buffer_zip, "w")
+
+        count = 0
+        for arq in arquivos_ordenados:
+            nome = arq['title']
+            if nome.lower().startswith("observacao"):
+                continue
+
+            count += 1
+            obs_nome = "observacao.txt" if count == 1 else f"observacao_{count}.txt"
+            observacao = ""
+            obs_arqs = [a for a in arquivos_ordenados if a['title'] == obs_nome]
+            if obs_arqs:
+                observacao = obs_arqs[0].GetContentString()
+
+            st.markdown("**📎 Evidência:**")
+            st.markdown(f"[{nome}]({arq['alternateLink']})", unsafe_allow_html=True)
+            st.markdown("**📝 Observação:**")
+            nova_obs = st.text_area(f"Editar observação {count}", value=observacao, key=f"obs_edit_{count}")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button(f"💾 Salvar observação {count}", key=f"save_obs_{count}"):
+                    obs_file = drive.CreateFile({'title': obs_nome, 'parents': [{'id': pasta_selecionada_id}]})
+                    obs_file.SetContentString(nova_obs.strip())
+                    obs_file.Upload()
+                    st.success(f"Observação {count} salva com sucesso.")
+                    st.rerun()
+
+            with col2:
+                if st.button(f"🗑️ Excluir esta evidência", key=f"del_{count}"):
+                    arq.Delete()
+                    if obs_arqs:
+                        obs_arqs[0].Delete()
+                    st.warning(f"Evidência {nome} excluída.")
+                    st.rerun()
+
+            # Adiciona ao .zip
+            with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+                arq.GetContentFile(tmp_file.name)
+                tmp_file.seek(0)
+                zipf.write(tmp_file.name, arcname=nome)
+            if observacao:
+                zipf.writestr(obs_nome, observacao)
+
+        zipf.close()
         buffer_zip.seek(0)
+
         st.download_button(
             label="📦 Baixar todos como .zip",
             data=buffer_zip,
@@ -915,7 +948,7 @@ elif menu == "Visualizar Evidências":
         )
 
         if usuario_logado in admin_users:
-            if st.button("🗑️ Excluir todas as evidências deste índice"):
+            if st.button("🧹 Excluir todas as evidências deste índice"):
                 try:
                     pasta_obj.Delete()
                     st.success(f"Evidências do índice {indice_escolhido} excluídas com sucesso.")
