@@ -200,12 +200,14 @@ def upload_evidencias_para_drive(idx, arquivos, observacao):
                 arquivo_drive.Upload()
 
         # 📝 Observação
-        if observacao.strip():
+        obs_linhas = [linha.strip() for linha in observacao.strip().split("\n\n") if linha.strip()]
+        for i, linha_obs in enumerate(obs_linhas):
+            nome_obs = "observacao.txt" if i == 0 else f"observacao_{i+1}.txt"
             obs_file = drive.CreateFile({
-                'title': 'observacao.txt',
+                'title': nome_obs,
                 'parents': [{'id': subpasta['id']}]
             })
-            obs_file.SetContentString(observacao.strip())
+            obs_file.SetContentString(linha_obs)
             obs_file.Upload()
 
         st.success("✅ Evidências enviadas ao Google Drive com sucesso.")
