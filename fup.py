@@ -505,6 +505,9 @@ elif menu == "Meus Follow-ups":
         anos = ["Todos"] + sorted(df["Ano"].dropna().unique().tolist())
         ano_selecionado = st.sidebar.selectbox("Ano", anos)
 
+        vencimento = ["Todos", "No Prazo", "Vencido"]
+        vencimento_selecionado = st.sidebar.selectbox("Tipo de Vencimento", vencimento)
+
         prazo_inicial, prazo_final = st.sidebar.date_input(
             "Intervalo de Prazo",
             [df["Prazo"].min().date(), df["Prazo"].max().date()]
@@ -521,6 +524,11 @@ elif menu == "Meus Follow-ups":
         
         if ano_selecionado != "Todos":
             df = df[df["Ano"] == ano_selecionado]
+
+        if vencimento_selecionado == 'Vencidos':
+            df = df[df['Prazo']< hoje]
+        elif vencimento_selecionado == 'No Prazo':
+            df = df[df['Prazo']>= hoje]
 
         df = df[(df["Prazo"].dt.date >= prazo_inicial) & (df["Prazo"].dt.date <= prazo_final)]
         df = df.sort_values(by="Prazo")
