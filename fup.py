@@ -577,8 +577,7 @@ elif menu == "Meus Follow-ups":
                     arquivos = drive.ListFile({'q': "title = 'followups.csv' and trashed=false"}).GetList()
                     if arquivos:
                         arquivo = arquivos[0]
-                        arquivo.SetContentFile(caminho_csv)
-                        arquivo.Upload()
+                        upload_para_drive()
                     st.info("📤 Arquivo 'followups.csv' atualizado no Drive.")
                 except Exception as e:
                     st.warning(f"Erro ao enviar para o Drive: {e}")
@@ -596,8 +595,7 @@ elif menu == "Meus Follow-ups":
                         arquivos = drive.ListFile({'q': "title = 'followups.csv' and trashed=false"}).GetList()
                         if arquivos:
                             arquivo = arquivos[0]
-                            arquivo.SetContentFile(caminho_csv)
-                            arquivo.Upload()
+                            upload_para_drive()
                         st.info("📤 Arquivo 'followups.csv' atualizado no Google Drive.")
                     except Exception as e:
                         st.warning(f"Erro ao enviar para o Drive: {e}")
@@ -685,8 +683,7 @@ elif menu == "Cadastrar Follow-up":
                 df = pd.concat([df, pd.DataFrame([novo])], ignore_index=True)
                 df.to_csv(caminho_csv, sep=";", index=False, encoding="utf-8-sig")
     
-                arquivo.SetContentFile(caminho_csv)
-                arquivo.Upload()
+                upload_para_drive()
     
                 st.success("✅ Follow-up salvo e sincronizado com o Drive!")
     
