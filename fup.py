@@ -312,6 +312,7 @@ if "logged_in" not in st.session_state:
     st.session_state.username = ""
 
 if not st.session_state.logged_in:
+    st.image("Imagem PRIO.png", use_column_width=True)
     st.title("🔐 Login")
     username = st.text_input("Usuário")
     password = st.text_input("Senha", type="password")
