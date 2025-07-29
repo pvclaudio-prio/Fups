@@ -566,7 +566,11 @@ elif menu == "Meus Follow-ups":
                 novo_valor = st.date_input(f"Novo valor para '{coluna_escolhida}':", value=data_inicial)
                 novo_valor_str = novo_valor.strftime("%Y-%m-%d")
             else:
-                novo_valor = st.text_input(f"Valor atual de '{coluna_escolhida}':", value=str(valor_atual))
+                if isinstance(valor_atual, str) and len(valor_atual) > 100:
+                    novo_valor = st.text_area(f"Valor atual de '{coluna_escolhida}':", value=valor_atual, height=150)
+                else:
+                    novo_valor = st.text_input(f"Valor atual de '{coluna_escolhida}':", value=str(valor_atual))
+                    
                 novo_valor_str = novo_valor.strip()
 
             if st.button("💾 Atualizar campo"):
