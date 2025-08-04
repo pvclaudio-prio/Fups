@@ -408,7 +408,7 @@ if menu == "Dashboard":
         elif filtro_vencidos == 'No Prazo':
             df = df[df['Prazo']>= hoje]
 
-        if 'Todas' not in lista_auditorias:
+        if 'Todas' not in filtro_auditoria:
             df = df[df['Auditoria'].isin(filtro_auditoria)]
             
         # --- KPIs principais ---
