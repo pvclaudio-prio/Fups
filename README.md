@@ -13,6 +13,16 @@ Aplicação **Streamlit** para gestão de follow-ups da Auditoria Interna, com i
 - **Autenticação:** usuários definidos em variáveis de ambiente (`USUARIO="Nome|Senha"`)  
 - **IA:** análises automáticas com API da OpenAI (`gpt-4o`)  
 
+FUP/
+ ├── followups.csv
+ ├── backup/
+ │    └── followups_backup_<timestamp>.csv
+ └── evidencias/
+      └── indice_<ID>/
+           ├── arquivo.pdf
+           ├── arquivo.png
+           └── observacao.txt
+
 ---
 
 ## 🚀 Funcionalidades
