@@ -506,6 +506,7 @@ elif menu == "Meus Follow-ups":
     try:
         df = carregar_followups()
         df.columns = df.columns.str.strip()
+        df = df[['Índice'] + [c for c in df.columns if c != 'Índice']]
 
         usuario_logado = st.session_state.username
         nome_usuario = users[usuario_logado]["name"]
@@ -577,12 +578,12 @@ elif menu == "Meus Follow-ups":
                 "Responsavel": "Responsável",
                 "Usuario": "Usuário"
                 })
-            st.dataframe(df_app, use_container_width=True)
+            st.dataframe(df_app,hide_index=True, use_container_width=True)
             st.success(f"Total Follow Ups: {len(df_app)}")
 
             st.subheader("🛠️ Atualizar / Excluir Follow-up por Índice")
 
-            indices_disponiveis = df.index.tolist()
+            indices_disponiveis = df["Índice"].tolist()
             indice_selecionado = st.selectbox("Selecione o índice para edição", indices_disponiveis)
 
             linha = df.loc[indice_selecionado]
@@ -594,6 +595,7 @@ elif menu == "Meus Follow-ups":
             """)
 
             colunas_editaveis = [col for col in df.columns]
+            colunas_editaveis.remove('Índice')
             coluna_escolhida = st.selectbox("Selecione a coluna para alterar", colunas_editaveis)
 
             valor_atual = linha[coluna_escolhida]
@@ -823,38 +825,14 @@ elif menu == "Cadastrar Follow-up":
             status = st.selectbox("Status", ["Pendente", "Em Andamento", "Concluído"])
             avaliacao = st.selectbox("Avaliação FUP", ["", "Satisfatório", "Insatisfatório"])
             observacao = st.text_area("Observação FUP")
-    
             submitted = st.form_submit_button("Salvar Follow-up")
-    
+
         if submitted:
-            novo = {
-                "Titulo": titulo,
-                "Ambiente": ambiente,
-                "Ano": ano,
-                "Auditoria": auditoria,
-                "Apontamento": apontamento,
-                "Impacto": impacto,
-                "Descricao": descricao,
-                "Recomendacao": recomendacao,
-                "Riscos": riscos,
-                "Plano de Acao": plano,
-                "Responsavel": responsavel,
-                "Usuario": usuario,
-                "E-mail": email,
-                "Prazo": prazo.strftime("%Y-%m-%d"),
-                "Data de Conclusão": data_conclusao.strftime("%Y-%m-%d"),
-                "Status": status,
-                "Avaliação FUP": avaliacao,
-                "Observação FUP": observacao
-            }
-    
             try:
-                # Conecta ao Drive e busca o followups.csv
+                # 1) Carrega base do Drive
                 drive = conectar_drive()
-                arquivos = drive.ListFile({
-                    'q': "title = 'followups.csv' and trashed=false"
-                }).GetList()
-    
+                arquivos = drive.ListFile({'q': "title = 'followups.csv' and trashed=false"}).GetList()
+
                 if arquivos:
                     arquivo = arquivos[0]
                     caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
@@ -863,41 +841,66 @@ elif menu == "Cadastrar Follow-up":
                 else:
                     df = pd.DataFrame()
                     arquivo = drive.CreateFile({'title': 'followups.csv'})
-    
-                # Atualiza e salva
+
+                # 2) Gera próximo número de Evidencia com segurança
+                if "Índice" not in df.columns or df["Índice"].dropna().empty:
+                    proxima_evidencia = 1
+                else:
+                    ev_num = pd.to_numeric(df["Índice"], errors="coerce").dropna()
+                    proxima_evidencia = int(ev_num.max()) + 1 if not ev_num.empty else 1
+
+                novo = {
+                    "Titulo": titulo,
+                    "Ambiente": ambiente,
+                    "Ano": ano,
+                    "Auditoria": auditoria,
+                    "Apontamento": apontamento,
+                    "Impacto": impacto,
+                    "Descricao": descricao,
+                    "Recomendacao": recomendacao,
+                    "Riscos": riscos,
+                    "Plano de Acao": plano,
+                    "Responsavel": responsavel,
+                    "Usuario": usuario,
+                    "E-mail": email,
+                    "Prazo": prazo.strftime("%Y-%m-%d"),
+                    "Data de Conclusão": data_conclusao.strftime("%Y-%m-%d"),
+                    "Status": status,
+                    "Avaliação FUP": avaliacao,
+                    "Observação FUP": observacao,
+                    "Evidencia": proxima_evidencia
+                }
+
+                # 3) Salva base local e faz upload
                 df = pd.concat([df, pd.DataFrame([novo])], ignore_index=True)
                 df.to_csv(caminho_csv, sep=";", index=False, encoding="utf-8-sig")
-    
                 upload_para_drive()
-    
-                st.success("✅ Follow-up salvo e sincronizado com o Drive!")
-    
+
+                st.success(f"✅ Follow-up salvo e sincronizado! Evidência #{proxima_evidencia}")
+
                 corpo = f"""
-                    <p>Olá <b>{responsavel}</b>,</p>
-                    <p>Um novo follow-up foi atribuído a você:</p>
-                    <ul>
-                        <li><b>Título:</b> {titulo}</li>
-                        <li><b>Auditoria:</b> {auditoria}</li>
-                        <li><b>Apontamento:</b> {apontamento}</li>
-                        <li><b>Plano de Acao:</b> {plano}</li>
-                        <li><b>Prazo:</b> {prazo.strftime('%d/%m/%Y')}</li>
-                        <li><b>Status:</b> {status}</li>
-                    </ul>
-                    <p>Acesse o aplicativo para incluir evidências e acompanhar o andamento:</p>
-                    <p><a href='http://10.40.12.13:8502/' target='_blank'>🔗 Acessar Follow-ups da Auditoria Interna</a></p>
-                    <br>
-                    <p>Atenciosamente,<br>Time de Auditoria Interna.</p>
-                    """
-    
+                <p>Olá <b>{responsavel}</b>,</p>
+                <p>Um novo follow-up foi atribuído a você:</p>
+                <ul>
+                    <li><b>Título:</b> {titulo}</li>
+                    <li><b>Auditoria:</b> {auditoria}</li>
+                    <li><b>Apontamento:</b> {apontamento}</li>
+                    <li><b>Plano de Ação:</b> {plano}</li>
+                    <li><b>Prazo:</b> {prazo.strftime('%d/%m/%Y')}</li>
+                    <li><b>Status:</b> {status}</li>
+                    <li><b>Evidência:</b> #{proxima_evidencia}</li>
+                </ul>
+                <p><a href='http://10.40.12.13:8502/' target='_blank'>🔗 Acessar Follow-ups da Auditoria Interna</a></p>
+                <br>
+                <p>Atenciosamente,<br>Time de Auditoria Interna.</p>
+                """
                 if email:
-                    sucesso_envio = enviar_email_outlook(
+                    if enviar_email_outlook(
                         destinatario=email,
                         assunto=f"[Follow-up] Nova Atribuição: {titulo}",
                         corpo_html=corpo
-                    )
-                    if sucesso_envio:
+                    ):
                         st.success("📧 E-mail de notificação enviado com sucesso!")
-    
             except Exception as e:
                 st.error(f"Erro ao cadastrar follow-up: {e}")
     else:
@@ -908,12 +911,8 @@ elif menu == "Enviar Evidências":
     st.info("Aqui você poderá enviar comprovantes e observações para follow-ups.")
 
     try:
-        # 🔄 Puxa o arquivo mais recente do Drive
         drive = conectar_drive()
-        arquivos_drive = drive.ListFile({
-            'q': "title = 'followups.csv' and trashed=false"
-        }).GetList()
-
+        arquivos_drive = drive.ListFile({'q': "title = 'followups.csv' and trashed=false"}).GetList()
         if not arquivos_drive:
             st.warning("Arquivo followups.csv não encontrado no Google Drive.")
             st.stop()
@@ -921,28 +920,39 @@ elif menu == "Enviar Evidências":
         arquivo_drive = arquivos_drive[0]
         caminho_temp = tempfile.NamedTemporaryFile(delete=False).name
         arquivo_drive.GetContentFile(caminho_temp)
+
         df = pd.read_csv(caminho_temp, sep=";", encoding="utf-8-sig")
         df.columns = df.columns.str.strip()
+
+        if "Índice" not in df.columns:
+            st.error("A base não possui a coluna 'Índice'.")
+            st.stop()
 
         usuario_logado = st.session_state.username
         nome_usuario = users[usuario_logado]["name"]
 
         if usuario_logado not in admin_users:
-            df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
+            df = df[df["Responsavel"].astype(str).str.lower() == nome_usuario.lower()]
 
         if df.empty:
             st.info("Nenhum follow-up disponível para envio de evidência.")
             st.stop()
 
-        idx = st.selectbox("Selecione o índice do follow-up:", df.index.tolist())
-        linha = df.loc[idx]
+        # opções seguras
+        evid_ops = (
+            pd.to_numeric(df["Índice"], errors="coerce")
+              .dropna().astype(int).sort_values().unique().tolist()
+        )
+
+        idx = st.selectbox("Selecione o índice (Evidência) do follow-up:", evid_ops)
+        linha = df.loc[pd.to_numeric(df["Índice"], errors="coerce").fillna(-1).astype(int) == int(idx)].iloc[0]
 
         st.markdown(f"""
-        🔎 **Título:** {linha['Titulo']}  
-        🚩 **Apontamento:** {linha['Apontamento']}  
-        📅 **Prazo:** {linha['Prazo']}  
-        👤 **Responsável:** {linha['Responsavel']}  
-        📝 **Plano de Ação:** {linha['Plano de Acao']}
+        🔎 **Título:** {linha.get('Titulo','')}  
+        🚩 **Apontamento:** {linha.get('Apontamento','')}  
+        📅 **Prazo:** {linha.get('Prazo','')}  
+        👤 **Responsável:** {linha.get('Responsavel','')}  
+        📝 **Plano de Ação:** {linha.get('Plano de Acao','')}
         """)
 
         arquivos = st.file_uploader(
@@ -952,23 +962,19 @@ elif menu == "Enviar Evidências":
         )
         observacao = st.text_area("Observações (opcional)")
 
-        submitted = st.button("📨 Enviar Evidência")
-        if submitted:
+        if st.button("📨 Enviar Evidência"):
             if not arquivos:
                 st.warning("Você precisa anexar pelo menos um arquivo.")
                 st.stop()
 
-            # Upload direto para o Drive
-            sucesso_upload = upload_evidencias_para_drive(idx, arquivos, observacao)
-
-            # Registro em log (local)
-            if sucesso_upload:
+            if upload_evidencias_para_drive(idx, arquivos, observacao):
+                # log local
                 try:
                     log_path = Path("log_evidencias.csv")
                     log_data = {
                         "indice": idx,
-                        "titulo": linha["Titulo"],
-                        "responsavel": linha["Responsavel"],
+                        "titulo": linha.get("Titulo",""),
+                        "responsavel": linha.get("Responsavel",""),
                         "arquivos": "; ".join([arq.name for arq in arquivos]),
                         "observacao": observacao,
                         "data_envio": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -983,14 +989,13 @@ elif menu == "Enviar Evidências":
                 except Exception as e:
                     st.error(f"Erro ao salvar log local: {e}")
 
-                # Enviar e-mail de notificação
                 corpo = f"""
                 <p>🕵️ Evidência enviada para o follow-up:</p>
                 <ul>
-                    <li><b>Índice:</b> {idx}</li>
-                    <li><b>Título:</b> {linha['Titulo']}</li>
-                    <li><b>Apontamento:</b> {linha['Apontamento']}</li>
-                    <li><b>Responsável:</b> {linha['Responsavel']}</li>
+                    <li><b>Índice (Evidência):</b> {idx}</li>
+                    <li><b>Título:</b> {linha.get('Titulo','')}</li>
+                    <li><b>Apontamento:</b> {linha.get('Apontamento','')}</li>
+                    <li><b>Responsável:</b> {linha.get('Responsavel','')}</li>
                     <li><b>Arquivos:</b> {"; ".join([arq.name for arq in arquivos])}</li>
                     <li><b>Data:</b> {datetime.now().strftime("%d/%m/%Y %H:%M")}</li>
                 </ul>
@@ -998,78 +1003,100 @@ elif menu == "Enviar Evidências":
                 """
 
                 destinatarios_evidencias = ["cvieira@prio3.com.br","mathayde@prio3.com.br","amendonca@prio3.com.br"]
-                
-                sucesso_envio = enviar_email_outlook(
+                if enviar_email_outlook(
                     destinatario=destinatarios_evidencias,
-                    assunto=f"[Evidência] Follow-up #{idx} - {linha['Titulo']}",
+                    assunto=f"[Evidência] Follow-up #{idx} - {linha.get('Titulo','')}",
                     corpo_html=corpo
-                )
-                if sucesso_envio:
+                ):
                     st.success("📧 Notificação enviada ao time de auditoria!")
-
     except Exception as e:
         st.error(f"Erro ao carregar dados do Drive: {e}")
 
 elif menu == "Visualizar Evidências":
-
     st.title("📂 Visualização de Evidências")
 
     try:
         drive = conectar_drive()
-        df = carregar_followups()
+        df = carregar_followups()  
         df.columns = df.columns.str.strip()
+
+        if "Índice" not in df.columns:
+            st.error("A base não possui a coluna 'Índice'.")
+            st.stop()
 
         usuario_logado = st.session_state.username
         nome_usuario = users[usuario_logado]["name"].lower()
 
-        # Pasta "evidencias"
+        # Pasta raiz
         pasta_principal = drive.ListFile({
             'q': "title='evidencias' and mimeType='application/vnd.google-apps.folder' and trashed=false"
         }).GetList()
-
         if not pasta_principal:
             st.warning("Nenhuma pasta de evidências encontrada.")
             st.stop()
-
         pasta_id = pasta_principal[0]['id']
 
         subpastas = drive.ListFile({
             'q': f"'{pasta_id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false"
         }).GetList()
 
+        # Mapa: numero -> {id, obj}
+        todas_opcoes = {
+            p['title'].split('_')[1]: {'id': p['id'], 'obj': p}
+            for p in subpastas if p['title'].startswith('indice_') and '_' in p['title']
+        }
+
         if usuario_logado in admin_users:
-            opcoes = {
-                p['title'].split('_')[1]: {'id': p['id'], 'obj': p}
-                for p in subpastas if p['title'].startswith('indice_') and '_' in p['title']
-            }
+            opcoes = todas_opcoes
         else:
-            indices_usuario = df[df['Responsavel'].str.lower() == nome_usuario].index.astype(str).tolist()
-            opcoes = {
-                p['title'].split('_')[1]: {'id': p['id'], 'obj': p}
-                for p in subpastas
-                if p['title'].startswith('indice_') and '_' in p['title'] and p['title'].split('_')[1] in indices_usuario
-            }
+            evid_usuario = (
+                df.loc[df['Responsavel'].astype(str).str.lower() == nome_usuario, 'Evidencia']
+                .pipe(pd.to_numeric, errors="coerce").dropna().astype(int).astype(str).unique().tolist()
+            )
+            opcoes = {k: v for k, v in todas_opcoes.items() if k in evid_usuario}
 
         if not opcoes:
             st.warning("Você não possui evidências associadas.")
             st.stop()
 
-        indices_disponiveis = sorted(opcoes.keys(), key=int)
-        indice_escolhido = st.selectbox("Selecione o índice do follow-up:", indices_disponiveis)
-
-        if indice_escolhido not in opcoes:
-            st.error(f"Índice '{indice_escolhido}' não encontrado.")
-            st.stop()
+        indices_disponiveis = sorted(opcoes.keys(), key=lambda x: int(x))
+        indice_escolhido = st.selectbox("Selecione o índice (Evidência) do follow-up:", indices_disponiveis)
 
         pasta_selecionada_id = opcoes[indice_escolhido]['id']
         pasta_obj = opcoes[indice_escolhido]['obj']
+        
+        evid_series = pd.to_numeric(df['Índice'], errors='coerce')
+        sel = int(indice_escolhido)
+        mask = evid_series.astype('Int64') == sel
+        
+        if not mask.any():
+            st.error(f"Não encontrei registro na base para a Evidência #{sel}.")
+            st.stop()
+        
+        linha = df.loc[mask].iloc[0]
+        
+        plano_col = 'Plano de Acao' if 'Plano de Acao' in df.columns else (
+            'Plano_de_Acao' if 'Plano_de_Acao' in df.columns else None
+        )
+        plano_val = linha.get(plano_col, '') if plano_col else ''
+        
+        prazo_raw = linha.get('Prazo', '')
+        try:
+            prazo_fmt = pd.to_datetime(prazo_raw).strftime('%d/%m/%Y')
+        except Exception:
+            prazo_fmt = str(prazo_raw)
+        
+        st.subheader(f"📁 Evidências para Follow-up #{sel}")
+        
+        st.markdown(f"""
+        🔎 **Título:** {linha.get('Titulo','')}  
+        🚩 **Apontamento:** {linha.get('Apontamento','')}  
+        📅 **Prazo:** {prazo_fmt}  
+        👤 **Responsável:** {linha.get('Responsavel','')}  
+        📝 **Plano de Ação:** {plano_val}  
+        """)
 
-        st.subheader(f"📁 Evidências para Follow-up #{indice_escolhido}")
-
-        arquivos = drive.ListFile({
-            'q': f"'{pasta_selecionada_id}' in parents and trashed=false"
-        }).GetList()
-
+        arquivos = drive.ListFile({'q': f"'{pasta_selecionada_id}' in parents and trashed=false"}).GetList()
         if not arquivos:
             st.info("Nenhum arquivo nesta pasta.")
             st.stop()
@@ -1097,21 +1124,21 @@ elif menu == "Visualizar Evidências":
                 arq.GetContentFile(tmp_file.name)
                 with open(tmp_file.name, "rb") as f:
                     file_bytes = f.read()
-            
+
             st.download_button(
                 label=f"Baixar evidência: {nome}",
                 data=file_bytes,
                 file_name=nome,
                 mime="application/octet-stream",
-                key=f"download_{count}"
+                key=f"download_{indice_escolhido}_{count}"
             )
 
             st.markdown("**📝 Observação:**")
-            nova_obs = st.text_area(f"Editar observação {count}", value=observacao, key=f"obs_edit_{count}")
+            nova_obs = st.text_area(f"Editar observação {count}", value=observacao, key=f"obs_edit_{indice_escolhido}_{count}")
 
             col1, col2 = st.columns(2)
             with col1:
-                if st.button(f"💾 Salvar observação {count}", key=f"save_obs_{count}"):
+                if st.button(f"💾 Salvar observação {count}", key=f"save_obs_{indice_escolhido}_{count}"):
                     obs_file = drive.CreateFile({'title': obs_nome, 'parents': [{'id': pasta_selecionada_id}]})
                     obs_file.SetContentString(nova_obs.strip())
                     obs_file.Upload()
@@ -1119,24 +1146,22 @@ elif menu == "Visualizar Evidências":
                     st.rerun()
 
             with col2:
-                if st.button(f"🗑️ Excluir esta evidência", key=f"del_{count}"):
+                if st.button(f"🗑️ Excluir esta evidência", key=f"del_{indice_escolhido}_{count}"):
                     arq.Delete()
                     if obs_arqs:
                         obs_arqs[0].Delete()
                     st.warning(f"Evidência {nome} excluída.")
                     st.rerun()
 
-            # Adiciona ao .zip
+            # adiciona ao ZIP
             with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
                 arq.GetContentFile(tmp_file.name)
-                tmp_file.seek(0)
                 zipf.write(tmp_file.name, arcname=nome)
             if observacao:
                 zipf.writestr(obs_nome, observacao)
 
         zipf.close()
         buffer_zip.seek(0)
-
         st.download_button(
             label="📦 Baixar todos como .zip",
             data=buffer_zip,
