@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Aug  4 07:43:41 2025
+
+@author: cvieira
+"""
+
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date
@@ -18,19 +26,22 @@ import openai
 import json
 import httpx
 from sentence_transformers import SentenceTransformer, util
-from openai import OpenAI
+import openai
 import json
 import requests
 import tempfile
 from difflib import get_close_matches
 import re
 from datetime import timedelta
-import matplotlib.pyplot as plt
-from docx import Document
-from docx.shared import Pt
 from pandas import Timestamp
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from dotenv import load_dotenv
 
-st.set_page_config(layout = 'wide')
+st.set_page_config(page_title="Auditoria Interna - PRIO",layout = 'wide')
+
+load_dotenv()
 
 st.write("Hoje:", pd.Timestamp.today())
 
@@ -41,29 +52,43 @@ admin_users = ["cvieira", "amendonca", "mathayde"]
 cadastro_users = ["cvieira", "amendonca", "mathayde"]
 chat_users = ["cvieira", "amendonca", "mathayde","bromanelli","ysouza"]
 
+email_user = os.getenv("EMAIL_USER")
+email_pass = os.getenv("EMAIL_PASS")
+
 hoje = Timestamp.today().normalize()
 
-def enviar_email_gmail(destinatario, assunto, corpo_html):
+def enviar_email_outlook(destinatario, assunto, corpo_html):
     try:
-        yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
-        yag.send(to=destinatario, subject=assunto, contents=corpo_html)
+        email_user = os.getenv("EMAIL_USER")
+        email_pass = os.getenv("EMAIL_PASS")
+
+        msg = MIMEMultipart("alternative")
+        msg["From"] = email_user
+        msg["To"] = ", ".join(destinatario) if isinstance(destinatario, list) else destinatario
+        msg["Subject"] = assunto
+
+        parte_html = MIMEText(corpo_html, "html")
+        msg.attach(parte_html)
+
+        with smtplib.SMTP("10.40.0.106", 587) as servidor:
+            servidor.sendmail(email_user, destinatario, msg.as_string())
+
         return True
+
     except Exception as e:
         st.error(f"Erro ao enviar e-mail: {e}")
         return False
     
 def conectar_drive():
-    cred_dict = st.secrets["credentials"]
-
     credentials = OAuth2Credentials(
-        access_token=cred_dict["access_token"],
-        client_id=cred_dict["client_id"],
-        client_secret=cred_dict["client_secret"],
-        refresh_token=cred_dict["refresh_token"],
-        token_expiry=datetime.strptime(cred_dict["token_expiry"], "%Y-%m-%dT%H:%M:%SZ"),
-        token_uri=cred_dict["token_uri"],
+        access_token=os.getenv("ACCESS_TOKEN"),
+        client_id=os.getenv("CLIENT_ID"),
+        client_secret=os.getenv("CLIENT_SECRET"),
+        refresh_token=os.getenv("REFRESH_TOKEN"),
+        token_expiry=datetime.strptime(os.getenv("TOKEN_EXPIRY"), "%Y-%m-%dT%H:%M:%SZ"),
+        token_uri=os.getenv("TOKEN_URI"),
         user_agent="streamlit-app/1.0",
-        revoke_uri=cred_dict["revoke_uri"]
+        revoke_uri=os.getenv("REVOKE_URI")
     )
 
     # Atualiza token se expirado
@@ -240,9 +265,9 @@ def carregar_followups():
     }).GetList()
 
     colunas = [
-        "Titulo", "Ambiente", "Ano", "Auditoria", "Apontamento", "Risco",
-        "Plano de Acao", "Responsavel", "Usuario", "E-mail",
-        "Prazo", "Data de Conclusão", "Status", "Avaliação FUP", "Observação"
+        "Titulo", "Ambiente", "Ano", "Auditoria", "Apontamento", "Impacto","Recomendacao",
+        "Descricao","Riscos","Plano de Acao", "Responsavel", "Usuario", "E-mail",
+        "Prazo", "Data de Conclusão", "Status", "Avaliação FUP", "Observação FUP"
     ]
 
     if not arquivos:
@@ -295,15 +320,14 @@ def aplicar_filtros_df(df, pergunta):
 # --- Usuários e autenticação simples ---
 @st.cache_data
 def carregar_usuarios():
-    usuarios_config = st.secrets.get("users", {})
-    usuarios = {}
-    for user, dados in usuarios_config.items():
-        try:
-            nome, senha = dados.split("|", 1)
-            usuarios[user] = {"name": nome, "password": senha}
-        except:
-            st.warning(f"Erro ao carregar usuário '{user}' nos secrets.")
-    return usuarios
+    users = {}
+    for k, v in os.environ.items():
+        if "|" in v:
+            valor_limpo = v.strip().replace('"', '')
+            partes = valor_limpo.split("|")
+            if len(partes) == 2:
+                users[k.lower()] = {"name": partes[0].strip(), "password": partes[1].strip()}
+    return users
 
 users = carregar_usuarios()
 
@@ -313,7 +337,7 @@ if "logged_in" not in st.session_state:
 
 if not st.session_state.logged_in:
     st.title("🔐 Login")
-    username = st.text_input("Usuário")
+    username = st.text_input("Usuário").strip().lower()
     password = st.text_input("Senha", type="password")
     if st.button("Entrar"):
         user = users.get(username)
@@ -426,12 +450,19 @@ if menu == "Dashboard":
         col5.metric("Conclusão (%)", f"{taxa_conclusao}%")
     
         # --- Gráficos ---
+        mapa_de_cores = {
+            'Concluído': '#5A8B73',    
+            'Em Andamento': '#4F77AA',  
+            'Pendente': '#B4656F'
+        }
+        
         st.subheader("📌 Distribuição por Status")
         fig_status = px.pie(
             df,
             names="Status",
             title="Distribuição dos Follow-ups por Status",
-            hole=0.4
+            hole=0.4,
+            color_discrete_map=mapa_de_cores
         )
         st.plotly_chart(fig_status, use_container_width=True)
     
@@ -488,6 +519,7 @@ elif menu == "Meus Follow-ups":
         #df["Data de Conclusão"] = df["Data de Conclusão"].dt.strftime("%d/%m/%Y")
         df["Ano"] = df["Ano"].astype(str)
         df["Ambiente"] = df["Ambiente"].str.lower()
+        df["Data de Conclusão"] = df["Data de Conclusão"].fillna(df["Prazo"])
 
         # --- Filtros na sidebar ---
         st.sidebar.subheader("Filtros de Pesquisa")
@@ -537,8 +569,16 @@ elif menu == "Meus Follow-ups":
 
         if not df.empty:
             df["Ambiente"] = df["Ambiente"].str.lower()
-            st.dataframe(df, use_container_width=True)
-            st.success(f"Total Follow Ups: {len(df)}")
+            df_app = df.copy()
+            df_app = df_app.rename(columns={
+                "Descricao":"Descrição do Apontamento",
+                "Recomendacao":"Recomendação",
+                "Plano de Acao": "Plano de Ação",
+                "Responsavel": "Responsável",
+                "Usuario": "Usuário"
+                })
+            st.dataframe(df_app, use_container_width=True)
+            st.success(f"Total Follow Ups: {len(df_app)}")
 
             st.subheader("🛠️ Atualizar / Excluir Follow-up por Índice")
 
@@ -565,11 +605,15 @@ elif menu == "Meus Follow-ups":
                     data_inicial = date.today()
                 novo_valor = st.date_input(f"Novo valor para '{coluna_escolhida}':", value=data_inicial)
                 novo_valor_str = novo_valor.strftime("%Y-%m-%d")
+                
+            elif coluna_escolhida in ["Status"]:
+                novo_valor = st.selectbox("Status", ["Pendente", "Em Andamento", "Concluído"])     
+                novo_valor_str = str(novo_valor)
             else:
                 if isinstance(valor_atual, str) and len(valor_atual) > 100:
                     novo_valor = st.text_area(f"Valor atual de '{coluna_escolhida}':", value=valor_atual, height=150)
                 else:
-                    novo_valor = st.text_input(f"Valor atual de '{coluna_escolhida}':", value=str(valor_atual))
+                    novo_valor = st.text_area(f"Valor atual de '{coluna_escolhida}':", value=str(valor_atual))
                     
                 novo_valor_str = novo_valor.strip()
 
@@ -625,6 +669,135 @@ elif menu == "Meus Follow-ups":
 
     except Exception as e:
         st.error(f"Erro ao acessar dados do Drive: {e}")
+        
+    def enviar_emails_individuais(id_emails):
+        # Base: sempre partimos do df_app atual
+        df = df_app.copy()
+    
+        # Normaliza nomes de colunas (tira espaços nas extremidades)
+        df.columns = df.columns.str.strip()
+    
+        # Checagens básicas
+        colunas_obrigatorias = ["E-mail","Auditoria", "Apontamento", "Plano de Ação", "Responsável", "Prazo", "Status"]
+        faltando = [c for c in colunas_obrigatorias if c not in df.columns]
+        if faltando:
+            st.error(f"Colunas ausentes na base para envio: {', '.join(faltando)}")
+            return
+    
+        # Filtra SOMENTE pelos índices selecionados (interseção por segurança)
+        if not id_emails:
+            st.warning("Nenhum item selecionado para envio.")
+            return
+        selecionados = df.index.intersection(id_emails)
+        if len(selecionados) == 0:
+            st.warning("Os índices selecionados não existem na base exibida.")
+            return
+    
+        df = df.loc[selecionados].copy()
+    
+        # Garante tipo datetime em Prazo (sem erro no .date())
+        df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
+    
+        # Responsáveis/E-mails únicos
+        responsaveis = (
+            df["E-mail"]
+            .dropna()
+            .astype(str)
+            .str.strip()
+            .str.lower()
+            .unique()
+            .tolist()
+        )
+    
+        if not responsaveis:
+            st.warning("Nenhum e-mail válido encontrado nos itens selecionados.")
+            return
+    
+        lista_cc = ["cvieira@prio3.com.br", "mathayde@prio3.com.br", "amendonca@prio3.com.br"]
+        email_user = os.getenv("EMAIL_USER")  # remetente/relay
+        # email_pass = os.getenv("EMAIL_PASS")  # não usado com relay simples
+    
+        for email in responsaveis:
+            df_resp = df[df["E-mail"].astype(str).str.strip().str.lower() == email]
+            if df_resp.empty:
+                continue
+    
+            corpo_html = """
+            <p>Olá,</p>
+            <p>Você possui os seguintes planos de ação:</p>
+            <table border='1' cellpadding='4' cellspacing='0'>
+                <tr>
+                    <th>Auditoria</th>
+                    <th>Apontamento</th>
+                    <th>Plano de Ação</th>
+                    <th>Responsável</th>
+                    <th>Prazo</th>
+                    <th>Status</th>
+                </tr>
+            """
+    
+            for _, row in df_resp.iterrows():
+                prazo_fmt = ""
+                if pd.notnull(row["Prazo"]):
+                    try:
+                        prazo_fmt = pd.to_datetime(row["Prazo"]).date().strftime("%d/%m/%Y")
+                    except Exception:
+                        prazo_fmt = str(row["Prazo"])
+                corpo_html += f"""
+                <tr>
+                    <td>{row.get('Auditoria', '')}</td>
+                    <td>{row.get('Apontamento', '')}</td>
+                    <td>{row.get('Plano de Ação', '')}</td>
+                    <td>{row.get('Responsável', '')}</td>
+                    <td>{prazo_fmt}</td>
+                    <td>{row.get('Status', '')}</td>
+                </tr>
+                """
+    
+            corpo_html += """
+            </table>
+            <p>Por favor, atualize os registros no sistema ou entre em contato com a Auditoria Interna.</p>
+            <p>Acesse o aplicativo para incluir evidências e acompanhar o andamento:</p>
+            <p><a href='http://10.40.12.13:8502/' target='_blank'>🔗 Acessar Follow-ups da Auditoria Interna</a></p>
+            <br>
+            <p>Atenciosamente,<br>Time de Auditoria Interna.</p>
+            """
+    
+            try:
+                msg = MIMEMultipart("alternative")
+                msg["From"] = email_user if email_user else "auditoria@prio3.com.br"
+                msg["To"] = email
+                msg["Cc"] = ", ".join(lista_cc)
+                msg["Subject"] = "Planos de Ação - Auditoria Interna"
+                msg.attach(MIMEText(corpo_html, "html"))
+    
+                todos_destinatarios = [email] + lista_cc
+    
+                # Relay interno (sem TLS/sem auth — ajuste conforme sua infra)
+                with smtplib.SMTP("10.40.0.106", 587) as servidor:
+                    # servidor.starttls()  # ative se seu relay exigir
+                    # servidor.login(email_user, email_pass)  # se exigir auth
+                    servidor.sendmail(msg["From"], todos_destinatarios, msg.as_string())
+    
+                st.success(f"📧 E-mail enviado para: {email}")
+    
+            except Exception as e:
+                st.warning(f"Erro ao enviar para {email}: {e}")
+    
+    
+    # 🔁 Botão para envio manual (com key única para evitar colisão)
+    if st.session_state.username in admin_users:
+        id_emails = st.multiselect("Selecione os itens para envio de e-mail:", df_app.index, key="id_envio_emails")
+        if id_emails:
+            df_preview = df_app.loc[df_app.index.intersection(id_emails)]
+            st.markdown("### 📋 Itens selecionados para envio")
+            st.dataframe(df_preview, use_container_width=True)
+        else:
+            st.info("Nenhum item selecionado ainda.")
+            
+        if st.button("✉️ Enviar lembrete dos planos de ação", key="btn_enviar_lembrete"):
+            enviar_emails_individuais(id_emails)
+
 
 elif menu == "Cadastrar Follow-up":
     st.title("📝 Cadastrar Follow-up")
@@ -637,7 +810,10 @@ elif menu == "Cadastrar Follow-up":
             ano = st.selectbox("Ano", list(range(2020, date.today().year + 2)))
             auditoria = st.text_input("Auditoria")
             apontamento = st.text_input("Apontamento")
-            risco = st.selectbox("Risco", ["Baixo", "Médio", "Alto"])
+            impacto = st.selectbox("Impacto", ["Baixo", "Moderado", "Alto", "Crítico"])
+            descricao = st.text_area("Descrição Apontamento")
+            recomendacao = st.text_area("Recomendação")
+            riscos = st.text_area("Riscos")
             plano = st.text_area("Plano de Ação")
             responsavel = st.text_input("Responsável")
             usuario = st.text_input("Usuário")
@@ -646,7 +822,7 @@ elif menu == "Cadastrar Follow-up":
             data_conclusao = st.date_input("Data de Conclusão", value=date.today())
             status = st.selectbox("Status", ["Pendente", "Em Andamento", "Concluído"])
             avaliacao = st.selectbox("Avaliação FUP", ["", "Satisfatório", "Insatisfatório"])
-            observacao = st.text_area("Observação")
+            observacao = st.text_area("Observação FUP")
     
             submitted = st.form_submit_button("Salvar Follow-up")
     
@@ -657,7 +833,10 @@ elif menu == "Cadastrar Follow-up":
                 "Ano": ano,
                 "Auditoria": auditoria,
                 "Apontamento": apontamento,
-                "Risco": risco,
+                "Impacto": impacto,
+                "Descricao": descricao,
+                "Recomendacao": recomendacao,
+                "Riscos": riscos,
                 "Plano de Acao": plano,
                 "Responsavel": responsavel,
                 "Usuario": usuario,
@@ -666,7 +845,7 @@ elif menu == "Cadastrar Follow-up":
                 "Data de Conclusão": data_conclusao.strftime("%Y-%m-%d"),
                 "Status": status,
                 "Avaliação FUP": avaliacao,
-                "Observação": observacao
+                "Observação FUP": observacao
             }
     
             try:
@@ -694,24 +873,24 @@ elif menu == "Cadastrar Follow-up":
                 st.success("✅ Follow-up salvo e sincronizado com o Drive!")
     
                 corpo = f"""
-                <p>Olá <b>{responsavel}</b>,</p>
-                <p>Um novo follow-up foi atribuído a você:</p>
-                <ul>
-                    <li><b>Título:</b> {titulo}</li>
-                    <li><b>Auditoria:</b> {auditoria}</li>
-                    <li><b>Apontamento:</b> {apontamento}</li>
-                    <li><b>Plano de Acao:</b> {plano}</li>
-                    <li><b>Prazo:</b> {prazo.strftime('%d/%m/%Y')}</li>
-                    <li><b>Status:</b> {status}</li>
-                </ul>
-                <p>Acesse o aplicativo para incluir evidências e acompanhar o andamento:</p>
-                <p><a href='https://fup-auditoria.streamlit.app/' target='_blank'>🔗 fup-auditoria.streamlit.app</a></p>
-                <br>
-                <p>Atenciosamente,<br>Auditoria Interna</p>
-                """
+                    <p>Olá <b>{responsavel}</b>,</p>
+                    <p>Um novo follow-up foi atribuído a você:</p>
+                    <ul>
+                        <li><b>Título:</b> {titulo}</li>
+                        <li><b>Auditoria:</b> {auditoria}</li>
+                        <li><b>Apontamento:</b> {apontamento}</li>
+                        <li><b>Plano de Acao:</b> {plano}</li>
+                        <li><b>Prazo:</b> {prazo.strftime('%d/%m/%Y')}</li>
+                        <li><b>Status:</b> {status}</li>
+                    </ul>
+                    <p>Acesse o aplicativo para incluir evidências e acompanhar o andamento:</p>
+                    <p><a href='http://10.40.12.13:8502/' target='_blank'>🔗 Acessar Follow-ups da Auditoria Interna</a></p>
+                    <br>
+                    <p>Atenciosamente,<br>Time de Auditoria Interna.</p>
+                    """
     
                 if email:
-                    sucesso_envio = enviar_email_gmail(
+                    sucesso_envio = enviar_email_outlook(
                         destinatario=email,
                         assunto=f"[Follow-up] Nova Atribuição: {titulo}",
                         corpo_html=corpo
@@ -768,7 +947,7 @@ elif menu == "Enviar Evidências":
 
         arquivos = st.file_uploader(
             "Anexe arquivos de evidência",
-            type=["pdf", "png", "jpg", "jpeg", "zip", "doc", "docx", "eml", "msg"],
+            type=["pdf", "png", "jpg", "jpeg", "zip", "doc", "docx", "eml", "msg", "xlsx"],
             accept_multiple_files=True
         )
         observacao = st.text_area("Observações (opcional)")
@@ -820,7 +999,7 @@ elif menu == "Enviar Evidências":
 
                 destinatarios_evidencias = ["cvieira@prio3.com.br","mathayde@prio3.com.br","amendonca@prio3.com.br"]
                 
-                sucesso_envio = enviar_email_gmail(
+                sucesso_envio = enviar_email_outlook(
                     destinatario=destinatarios_evidencias,
                     assunto=f"[Evidência] Follow-up #{idx} - {linha['Titulo']}",
                     corpo_html=corpo
@@ -914,7 +1093,19 @@ elif menu == "Visualizar Evidências":
                 observacao = obs_arqs[0].GetContentString()
 
             st.markdown("**📎 Evidência:**")
-            st.markdown(f"[{nome}]({arq['alternateLink']})", unsafe_allow_html=True)
+            with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+                arq.GetContentFile(tmp_file.name)
+                with open(tmp_file.name, "rb") as f:
+                    file_bytes = f.read()
+            
+            st.download_button(
+                label=f"Baixar evidência: {nome}",
+                data=file_bytes,
+                file_name=nome,
+                mime="application/octet-stream",
+                key=f"download_{count}"
+            )
+
             st.markdown("**📝 Observação:**")
             nova_obs = st.text_area(f"Editar observação {count}", value=observacao, key=f"obs_edit_{count}")
 
@@ -968,110 +1159,217 @@ elif menu == "Visualizar Evidências":
 
 elif menu == "🔍 Chatbot FUP":
 
+    # ─────────────────────────────────────────────────────────────────────────────
+    # Helpers (chunking + chamada à API + gráficos)
+    # ─────────────────────────────────────────────────────────────────────────────
+    import os, requests, pandas as pd
+
+    def df_to_markdown_chunks(
+        df: pd.DataFrame,
+        max_rows_per_chunk: int = 150,
+        max_chars: int = 12000
+    ):
+        """Quebra o DataFrame em pedaços (linhas) convertidos para markdown,
+        respeitando limites de caracteres e linhas por chunk."""
+        if df is None or df.empty:
+            return ["Nenhum follow-up encontrado."]
+        chunks = []
+        i = 0
+        n = len(df)
+        while i < n:
+            j = min(n, i + max_rows_per_chunk)
+            md = df.iloc[i:j].fillna("").astype(str).to_markdown(index=False)
+            # Se exceder max_chars, reduz um pouco as linhas do chunk
+            while len(md) > max_chars and j - i > 25:
+                j -= 10
+                md = df.iloc[i:j].fillna("").astype(str).to_markdown(index=False)
+            chunks.append(md)
+            i = j
+        return chunks
+
+    def call_openai(messages, model="gpt-4o", temperature=0):
+        """Chamada enxuta à API (mantendo verify=False, como no seu código)."""
+        headers = {
+            "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
+            "Content-Type": "application/json",
+        }
+        payload = {"model": model, "messages": messages, "temperature": temperature}
+        try:
+            r = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                verify=False,
+                timeout=120,
+            )
+            if r.status_code == 200:
+                return r.json()["choices"][0]["message"]["content"]
+            return f"Erro na API: {r.status_code} - {r.text}"
+        except Exception as e:
+            return f"Erro na requisição: {e}"
+
+    def analise_executiva_em_chunks(system_prompt, pergunta, df_filtrado, df_total):
+        """Processa a base em partes, acumulando um resumo incremental e finalizando com consolidação."""
+        chunks_filtrados = df_to_markdown_chunks(df_filtrado, max_rows_per_chunk=120, max_chars=11000)
+        chunks_total = df_to_markdown_chunks(df_total, max_rows_per_chunk=200, max_chars=11000)
+
+        # Para evitar muitas chamadas, limitamos a base total a poucos pedaços (contexto geral)
+        max_chunks_total = min(2, len(chunks_total))
+
+        # Barra de progresso simples
+        total_passos = len(chunks_filtrados) + max_chunks_total + 1
+        barra = st.progress(0)
+        passo = 0
+
+        resumo_parcial = ""
+        # 1) Varre base filtrada (prioridade mais alta)
+        for idx, ch in enumerate(chunks_filtrados, 1):
+            passo += 1
+            barra.progress(passo / total_passos)
+            msgs = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"{pergunta}\n\n[Base filtrada - parte {idx}/{len(chunks_filtrados)}]\n{ch}\n\nTarefa: atualize e aprimore um RESUMO PARCIAL cumulativo com: principais riscos, temas críticos, status, e distribuição por ambiente/ano/risco/auditoria. Evite repetições; apenas agregue o que for novo."}
+            ]
+            if resumo_parcial:
+                # passamos o acumulado como contexto
+                msgs.insert(1, {"role": "assistant", "content": f"[RESUMO PARCIAL ATÉ AGORA]\n{resumo_parcial}"})
+                msgs.insert(2, {"role": "system", "content": "Incorpore as novas evidências sem reescrever tudo. Mantenha a estrutura e concisão."})
+            resumo_parcial = call_openai(msgs)
+
+        # 2) (Opcional) Considera rapidamente poucos pedaços da base total como contexto
+        for idx in range(max_chunks_total):
+            passo += 1
+            barra.progress(passo / total_passos)
+            ch = chunks_total[idx]
+            msgs = [
+                {"role": "system", "content": system_prompt},
+                {"role": "assistant", "content": f"[RESUMO PARCIAL ATUAL]\n{resumo_parcial}"},
+                {"role": "user", "content": f"[Base total - amostra {idx+1}/{max_chunks_total}]\n{ch}\n\nAjuste o RESUMO PARCIAL caso encontre padrões relevantes não refletidos (sem reescrever do zero)."}
+            ]
+            resumo_parcial = call_openai(msgs)
+
+        # 3) Consolidação final (sumário executivo + lista)
+        passo += 1
+        barra.progress(passo / total_passos)
+        mensagens_finais = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Consolide o RESUMO FINAL a partir do resumo parcial abaixo, obedecendo exatamente ao formato solicitado (Sumário Executivo robusto e lista por follow-up):\n\n[RESUMO PARCIAL]\n{resumo_parcial}\n\nMantenha linguagem objetiva, técnica e aderente às melhores práticas."}
+        ]
+        return call_openai(mensagens_finais)
+
+    def consultoria_em_chunks(prompt_consultor, df_filtrado):
+        """Gera planos de execução por partes, devolvendo a união das respostas."""
+        chunks = df_to_markdown_chunks(df_filtrado, max_rows_per_chunk=60, max_chars=10000)
+        respostas = []
+        barra = st.progress(0)
+        total = len(chunks)
+        if total == 0:
+            return "Nenhum follow-up encontrado para consultoria."
+        for i, ch in enumerate(chunks, 1):
+            barra.progress(i / total)
+            msgs = [
+                {"role": "system", "content": prompt_consultor},
+                {"role": "user", "content": f"[Base de follow-ups – parte {i}/{total}]\n{ch}\n\nGere planos de execução específicos APENAS para os follow-ups desta parte."}
+            ]
+            respostas.append(call_openai(msgs))
+        return "\n\n".join(respostas)
+
+    def plot_barras_simples(df_plot: pd.DataFrame):
+        """UI compacta para gráficos simples de barras (st.bar_chart) em colunas categóricas."""
+        with st.expander("📊 Gráficos de barras"):
+            if df_plot is None or df_plot.empty:
+                st.info("Nada a plotar: base vazia.")
+                return
+            # Sugestões de colunas comuns; mantém flexível se os nomes existirem
+            sugestoes = [c for c in ["Status", "Risco", "Ambiente", "Auditoria", "Responsavel"] if c in df_plot.columns]
+            if not sugestoes:
+                # fallback: pega até 5 colunas do tipo objeto
+                sugestoes = [c for c in df_plot.columns if df_plot[c].dtype == "object"][:5]
+            cols_sel = st.multiselect("Selecione colunas categóricas para contagem", sugestoes, default=sugestoes[:2])
+            for c in cols_sel:
+                st.markdown(f"**{c}**")
+                contagem = (
+                    df_plot[c]
+                    .fillna("Não informado")
+                    .astype(str)
+                    .value_counts()
+                    .sort_values(ascending=False)
+                )
+                st.bar_chart(contagem)
+
+    # ─────────────────────────────────────────────────────────────────────────────
+    # UI (agora com FORM para evitar execução automática)
+    # ─────────────────────────────────────────────────────────────────────────────
     st.title("🤖 Chatbot dos Relatórios de Auditoria")
-    
+
     usuario_logado = st.session_state.username
     nome_usuario = users[usuario_logado]["name"]
-    
+
     df = carregar_followups()
     if df.empty:
         st.warning("Nenhum dado disponível.")
         st.stop()
-    
+
     if usuario_logado not in admin_users:
         df = df[df["Responsavel"].str.lower() == nome_usuario.lower()]
-    
-    st.markdown("### 📝 Digite sua pergunta sobre os follow-ups:")
-    pergunta = st.text_input(
-        "Ex: Quais são os principais riscos dos meus follow-ups? Ou: Me mostre os pontos críticos no ambiente SAP.",
-        key="pergunta_fup"
-    )
-    
-    if 'executar_analise' not in st.session_state:
-        st.session_state.executar_analise = False
-    if 'executar_consultor' not in st.session_state:
-        st.session_state.executar_consultor = False
-    
-    # 🔘 Botão da análise executiva
-    if st.button("📨 Executar Análise"):
-        st.session_state.executar_analise = True
-        st.session_state.executar_consultor = False
-    
-    if st.session_state.executar_analise:
-        df_filtrado, filtros = aplicar_filtros_df(df, pergunta)
-    
-        dados_filtrados = df_filtrado.fillna("").astype(str).to_markdown(index=False) if not df_filtrado.empty else "Nenhum follow-up encontrado."
-        dados_completo = df.fillna("").astype(str).to_markdown(index=False)
-    
-        system_prompt = f"""
-    Você é um especialista sênior em Auditoria, Riscos, Governança e Controles Internos, com domínio dos frameworks:
-    - COSO, COBIT, ISO 27001, NIST CSF, ITIL e PMBOK.
-    
-    ### 🎯 Sua missão:
-    1. Gerar um **SUMÁRIO EXECUTIVO** robusto com:
-    - Principais riscos dos follow-ups filtrados.
-    - Temas críticos, controles deficientes, prazos críticos.
-    - Status (atrasados, pendentes, em andamento).
-    - Distribuição por ambiente, ano, risco e auditoria.
-    - Referência aos frameworks relevantes para os riscos identificados.
-    
-    2. Na sequência, liste os follow-ups encontrados:
-    - Para cada um, apresente:
-      - 📜 Descrição breve.
-      - 🔥 Status e Risco.
-      - 📌 Ambiente e Auditoria relacionada.
-    
-    ---
-    
-    ### 🗂️ Base filtrada:
-    {dados_filtrados}
-    
-    ### 🏛️ Base total:
-    {dados_completo}
-    
-    ---
-    
-    ⚠️ Seja técnico, objetivo e aderente às melhores práticas profissionais.
-    """
-    
-        payload = {
-            "model": "gpt-4o",
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": pergunta}
-            ],
-            "temperature": 0.2
-        }
-    
-        headers = {
-            "Authorization": f"Bearer {st.secrets['openai']['api_key']}",
-            "Content-Type": "application/json"
-        }
-    
-        response = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers=headers,
-            json=payload,
-            verify=False
+
+    # Form bloqueia execução até o clique
+    with st.form("form_analise_fup", clear_on_submit=False):
+        st.markdown("### 📝 Digite sua pergunta sobre os follow-ups:")
+        pergunta = st.text_input(
+            "Ex: Quais são os principais riscos dos meus follow-ups? Ou: Me mostre os pontos críticos no ambiente SAP.",
+            key="pergunta_fup"
         )
-    
-        if response.status_code == 200:
-            resposta_analise = response.json()["choices"][0]["message"]["content"]
-        else:
-            resposta_analise = f"Erro na API: {response.status_code} - {response.text}"
-    
+        submitted_analise = st.form_submit_button("📨 Executar Análise")
+
+    if submitted_analise:
+        df_filtrado, filtros = aplicar_filtros_df(df, pergunta)
+
+        # PROMPT do sistema (inalterado conceitualmente)
+        system_prompt = f"""
+Você é um especialista sênior em Auditoria, Riscos, Governança e Controles Internos, com domínio dos frameworks:
+- COSO, COBIT, ISO 27001, NIST CSF, ITIL e PMBOK.
+
+### 🎯 Sua missão:
+1. Gerar um **SUMÁRIO EXECUTIVO** robusto com:
+- Principais riscos dos follow-ups filtrados.
+- Temas críticos, controles deficientes, prazos críticos.
+- Status (atrasados, pendentes, em andamento).
+- Distribuição por ambiente, ano, risco e auditoria.
+- Referência aos frameworks relevantes para os riscos identificados.
+
+2. Na sequência, liste os follow-ups encontrados:
+- Para cada um, apresente:
+  - 📜 Descrição breve.
+  - 🔥 Status e Risco.
+  - 📌 Ambiente e Auditoria relacionada.
+
+---
+⚠️ Seja técnico, objetivo e aderente às melhores práticas profissionais.
+"""
+
+        resposta_analise = analise_executiva_em_chunks(
+            system_prompt=system_prompt,
+            pergunta=pergunta or "Analise os follow-ups conforme instruções.",
+            df_filtrado=df_filtrado,
+            df_total=df
+        )
+
         st.subheader("💡 Resultado da Análise Executiva")
         st.markdown(resposta_analise)
-    
-        if st.button("🚀 Consultor de Planos de Ação"):
-            st.session_state.executar_consultor = True
-    
-    if st.session_state.executar_consultor:
-        df_filtrado, filtros = aplicar_filtros_df(df, pergunta)
-    
-        dados_filtrados = df_filtrado.fillna("").astype(str).to_markdown(index=False) if not df_filtrado.empty else "Nenhum follow-up encontrado."
-    
-        prompt_consultor = f"""
+
+        # Gráficos rápidos da base filtrada
+        plot_barras_simples(df_filtrado)
+
+        # Segundo passo (consultor) também só dispara no clique
+        with st.form("form_consultor_fup", clear_on_submit=False):
+            st.markdown("#### Precisa de plano de ação detalhado?")
+            submitted_consultor = st.form_submit_button("🚀 Consultor de Planos de Ação")
+
+        if submitted_consultor:
+            df_filtrado2, _ = aplicar_filtros_df(df, pergunta)
+
+            prompt_consultor = f"""
 Você é um consultor sênior, especialista em governança, riscos, compliance, auditoria e gestão de projetos.
 
 Sua missão é ajudar o usuário a **sanar os follow-ups identificados**, propondo **formas práticas e detalhadas de executar cada plano de ação existente na base de dados**.
@@ -1090,60 +1388,30 @@ Sua missão é ajudar o usuário a **sanar os follow-ups identificados**, propon
 
 ---
 
-### 💡 **Exemplo esperado:**
-- Se o plano de ação diz: "**Executar due diligence do fornecedor**":
-   - Descreva:
-     - Como estruturar um processo de due diligence.
-     - Quais critérios devem ser avaliados (ex.: integridade, questões financeiras, trabalhistas, ambientais).
-     - Quais ferramentas podem ser usadas (ex.: sites públicos, bases de dados, softwares como LexisNexis, Refinitiv, D&B).
-     - Principais cuidados, como veracidade das informações e atualização dos dados.
-     - Frameworks que apoiam essa prática (ex.: ISO 37001, COSO, Compliance Programs).
-
----
-
-### 🗂️ Base de follow-ups:
-{dados_filtrados}
-
----
-
-⚠️ Importante:
+### 💡 **Importante**:
 - O plano deve ser **100% personalizado com base no conteúdo real dos planos de ação da base**.
 - Não escreva respostas genéricas.
 - Cada follow-up deve gerar uma análise própria, com orientações práticas, específicas e acionáveis.
 - Seja extremamente profissional, técnico, detalhado e aderente às melhores práticas internacionais.
 """
-    
-        payload2 = {
-            "model": "gpt-4o",
-            "messages": [
-                {"role": "system", "content": prompt_consultor},
-                {"role": "user", "content": "Como posso estruturar um projeto para resolver meus follow-ups?"}
-            ],
-            "temperature": 0.2
-        }
-    
-        response2 = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers=headers,
-            json=payload2,
-            verify=False
-        )
-    
-        if response2.status_code == 200:
-            resposta_consultor = response2.json()["choices"][0]["message"]["content"]
-        else:
-            resposta_consultor = f"Erro na API: {response2.status_code} - {response2.text}"
-    
-        st.subheader("🏗️ Consultoria - Plano de Ação")
-        st.markdown(resposta_consultor)
-    
-    # 🔍 Visualizar follow-ups encontrados
+
+            resposta_consultor = consultoria_em_chunks(
+                prompt_consultor=prompt_consultor,
+                df_filtrado=df_filtrado2
+            )
+
+            st.subheader("🏗️ Consultoria - Plano de Ação")
+            st.markdown(resposta_consultor)
+            plot_barras_simples(df_filtrado2)
+
+    # 🔍 Visualizar follow-ups encontrados (sempre visível; não dispara análise)
     st.markdown("### 📋 Follow-ups encontrados:")
-    df_filtrado, filtros = aplicar_filtros_df(df, pergunta)
-    if not df_filtrado.empty:
-        st.dataframe(df_filtrado, use_container_width=True)
+    df_preview, _ = aplicar_filtros_df(df, st.session_state.get("pergunta_fup", ""))
+    if not df_preview.empty:
+        st.dataframe(df_preview, use_container_width=True)
     else:
         st.info("Nenhum follow-up encontrado.")
+
         
 # Função para enviar e-mail mensal com follow-ups vencidos
 
@@ -1156,7 +1424,7 @@ def enviar_emails_followups_vencidos():
     hoje = pd.Timestamp.today().normalize()
 
     df_vencidos = df[
-        (df["Status"].str.lower() != "concluído") &
+        (df["Status"].str.lower() != "concluído") & 
         (df["Prazo"] < hoje)
     ]
 
@@ -1164,8 +1432,11 @@ def enviar_emails_followups_vencidos():
         st.info("✅ Nenhum follow-up vencido identificado para envio.")
         return
 
-    # Agrupar por responsável
     responsaveis = df_vencidos["E-mail"].dropna().unique().tolist()
+    lista_cc = ["cvieira@prio3.com.br", "mathayde@prio3.com.br", "amendonca@prio3.com.br"]
+
+    email_user = os.getenv("EMAIL_USER")
+    email_pass = os.getenv("EMAIL_PASS")
 
     for email in responsaveis:
         df_resp = df_vencidos[df_vencidos["E-mail"] == email]
@@ -1173,29 +1444,52 @@ def enviar_emails_followups_vencidos():
         if df_resp.empty:
             continue
 
-        corpo = f"""
+        corpo_html = """
         <p>Olá,</p>
         <p>Você possui os seguintes follow-ups vencidos:</p>
         <table border='1' cellpadding='4' cellspacing='0'>
-            <tr><th>Título</th><th>Auditoria</th><th>Plano de Ação</th><th>Responsável</th><th>Prazo</th><th>Status</th></tr>
+            <tr>
+                <th>Título</th><th>Auditoria</th><th>Plano de Ação</th><th>Responsável</th><th>Prazo</th><th>Status</th>
+            </tr>
         """
 
         for _, row in df_resp.iterrows():
-            corpo += f"<tr><td>{row['Titulo']}</td><td>{row['Auditoria']}</td><td>{row['Plano de Acao']}</td><td>{row['Responsavel']}</td><td>{row['Prazo'].date()}</td><td>{row['Status']}</td></tr>"
+            corpo_html += f"""
+            <tr>
+                <td>{row['Auditoria']}</td>
+                <td>{row['Apontamento']}</td>
+                <td>{row['Plano de Acao']}</td>
+                <td>{row['Responsavel']}</td>
+                <td>{row['Prazo'].date()}</td>
+                <td>{row['Status']}</td>
+            </tr>
+            """
 
-        corpo += """
+        corpo_html += """
         </table>
         <p>Por favor, atualize os registros no sistema ou entre em contato com a Auditoria Interna.</p>
         <p>Acesse o aplicativo para incluir evidências e acompanhar o andamento:</p>
-        <p><a href='https://fup-auditoria.streamlit.app/' target='_blank'>🔗 fup-auditoria.streamlit.app</a></p>
+        <p><a href='http://10.40.12.13:8502/' target='_blank'>🔗 Acessar Follow-ups da Auditoria Interna</a></p>
         <br>
-        <p>Atenciosamente,<br>Time de Auditoria</p>
+        <p>Atenciosamente,<br>Time de Auditoria Interna.</p>
         """
 
         try:
-            yag = yagmail.SMTP(user=st.secrets["email_user"], password=st.secrets["email_pass"])
-            yag.send(to=email, subject="📌 Follow-ups vencidos - Auditoria Interna", contents=corpo)
+            msg = MIMEMultipart("alternative")
+            msg["From"] = email_user
+            msg["To"] = email
+            msg["Cc"] = ", ".join(lista_cc)
+            msg["Subject"] = "Follow-ups vencidos - Auditoria Interna"
+
+            msg.attach(MIMEText(corpo_html, "html"))
+            
+            todos_destinatarios = [email] + lista_cc
+            
+            with smtplib.SMTP("10.40.0.106", 587) as servidor:
+                servidor.sendmail(email_user, todos_destinatarios, msg.as_string())
+        
             st.success(f"📧 E-mail enviado para: {email}")
+
         except Exception as e:
             st.warning(f"Erro ao enviar para {email}: {e}")
 
@@ -1210,48 +1504,81 @@ def enviar_emails_followups_a_vencer():
     df.columns = df.columns.str.strip()
     df["Prazo"] = pd.to_datetime(df["Prazo"], errors="coerce")
 
-    hoje = pd.Timestamp.today()
-    limite = hoje + timedelta(days=30)
+    hoje = pd.Timestamp.today().normalize()
 
+    # Filtra follow-ups ainda não concluídos com prazo futuro
     df_a_vencer = df[
         (df["Status"].str.lower() != "concluído") &
-        (df["Prazo"] >= hoje) &
-        (df["Prazo"] <= limite)
-    ]
+        (df["Prazo"] >= hoje)
+    ].copy()
 
     if df_a_vencer.empty:
-        st.info("✅ Nenhum follow-up com prazo a vencer em 30 dias.")
+        st.info("✅ Nenhum follow-up com prazo futuro identificado.")
         return
 
+    # Cálculo de dias restantes até o prazo
+    df_a_vencer["Dias Restantes"] = (df_a_vencer["Prazo"] - hoje).dt.days
+
     responsaveis = df_a_vencer["E-mail"].dropna().unique().tolist()
+    lista_cc = ["cvieira@prio3.com.br", "mathayde@prio3.com.br", "amendonca@prio3.com.br"]
+    email_user = os.getenv("EMAIL_USER")
 
     for email in responsaveis:
         df_resp = df_a_vencer[df_a_vencer["E-mail"] == email]
         if df_resp.empty:
             continue
 
-        corpo = f"""
+        corpo_html = """
         <p>Olá,</p>
-        <p>Você possui os seguintes follow-ups com prazo a vencer em até 30 dias:</p>
+        <p>Você possui os seguintes follow-ups com prazo a vencer:</p>
         <table border='1' cellpadding='4' cellspacing='0'>
-            <tr><th>Título</th><th>Auditoria</th><th>Plano de Ação</th><th>Responsável</th><th>Prazo</th><th>Status</th></tr>
+            <tr>
+                <th>Título</th><th>Auditoria</th><th>Plano de Ação</th>
+                <th>Responsável</th><th>Prazo</th><th>Em</th><th>Status</th>
+            </tr>
         """
 
         for _, row in df_resp.iterrows():
-            corpo += f"<tr><td>{row['Titulo']}</td><td>{row['Auditoria']}</td><td>{row['Plano de Acao']}</td><td>{row['Responsavel']}</td><td>{row['Prazo'].date()}</td><td>{row['Status']}</td></tr>"
+            prazo_str = row["Prazo"].strftime("%d/%m/%Y")
+            dias = row["Dias Restantes"]
+            corpo_html += f"""
+            <tr>
+                <td>{row['Auditoria']}</td>
+                <td>{row['Apontamento']}</td>
+                <td>{row['Plano de Acao']}</td>
+                <td>{row['Responsavel']}</td>
+                <td>{prazo_str}</td>
+                <td>em {dias} dia{'s' if dias != 1 else ''}</td>
+                <td>{row['Status']}</td>
+            </tr>
+            """
 
-        corpo += """
+        corpo_html += """
         </table>
         <p>Por favor, antecipe ações necessárias e atualize o status no sistema.</p>
-        <p>Acesse o aplicativo para mais detalhes:</p>
-        <p><a href='https://fup-auditoria.streamlit.app/' target='_blank'>🔗 fup-auditoria.streamlit.app</a></p>
+        <p><a href='http://10.40.12.13:8502/' target='_blank'>🔗 Acessar Follow-ups da Auditoria Interna</a></p>
         <br>
-        <p>Atenciosamente,<br>Time de Auditoria</p>
+        <p>Atenciosamente,<br>Time de Auditoria Interna.</p>
         """
 
-        sucesso = enviar_email_gmail(destinatario=email, assunto="⏳ Follow-ups próximos do vencimento", corpo_html=corpo)
-        if sucesso:
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["From"] = email_user
+            msg["To"] = email
+            msg["Cc"] = ", ".join(lista_cc)
+            msg["Subject"] = "Follow-ups a vencer - Auditoria Interna"
+
+            msg.attach(MIMEText(corpo_html, "html"))
+            todos_destinatarios = [email] + lista_cc
+
+            with smtplib.SMTP("10.40.0.106", 587) as servidor:
+                servidor.sendmail(email_user, todos_destinatarios, msg.as_string())
+
             st.success(f"📧 E-mail enviado para: {email}")
+
+        except Exception as e:
+            st.warning(f"Erro ao enviar para {email}: {e}")
+
 
 if st.session_state.username in admin_users:
     if st.sidebar.button("📅 Enviar lembrete de follow-ups a vencer"):
