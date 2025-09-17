@@ -1,45 +1,40 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Aug  4 07:43:41 2025
-
-@author: cvieira
-"""
-
-
-import streamlit as st
-import pandas as pd
-from datetime import datetime, date
-import yagmail
-from io import BytesIO
-from pathlib import Path
-import plotly.express as px
+# Bibliotecas padrão
 import os
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
+import re
+import json
 import zipfile
 import tempfile
-import json
-from oauth2client.client import OAuth2Credentials
-import httplib2
 import traceback
-import openai
-import json
-import httpx
-from sentence_transformers import SentenceTransformer, util
-import openai
-import json
-import requests
-import tempfile
-from difflib import get_close_matches
-import re
-from datetime import timedelta
-from pandas import Timestamp
 import smtplib
+from io import BytesIO
+from pathlib import Path
+from datetime import datetime, date, timedelta
+from difflib import get_close_matches
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from dotenv import load_dotenv
 
-st.set_page_config(page_title="Auditoria Interna - PRIO",layout = 'wide')
+import pandas as pd
+import plotly.express as px
+import streamlit as st
+import httpx
+import requests
+import openai
+from dotenv import load_dotenv
+from pandas import Timestamp
+from sentence_transformers import SentenceTransformer, util
+
+# Autenticação e Google Drive
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
+from oauth2client.client import OAuth2Credentials
+import httplib2
+
+st.set_page_config(
+    page_title="Auditoria Interna - PRIO",
+    page_icon="📋",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 load_dotenv()
 
